@@ -9,6 +9,6 @@
     "types": ["node"],
     "allowImportingTsExtensions": true
   },
-  "include": ["*.ts", "broker/**/*.ts", "opencode/**/*.ts"],
+  "include": ["*.ts", "broker/**/*.ts", "opencode/**/*.ts", "provider/**/*.ts"],
   "exclude": ["node_modules", "**/*.test.ts"]
 }

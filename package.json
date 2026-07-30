@@ -18,7 +18,11 @@
     "!opencode/**/*.test.ts",
     "broker/**/*.ts",
     "!broker/**/*.test.ts",
+    "provider/protected-service.ts",
+    "provider/provider.mjs",
+    "!provider/entry.ts",
     "scripts/**/*",
+    "!scripts/build-protected-provider.mjs",
     "types.ts",
     "config.ts",
     "durable-json.ts",
@@ -34,8 +38,10 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:protected-provider": "node scripts/build-protected-provider.mjs",
+    "prepack": "npm run build:protected-provider",
     "prepare": "npm run build",
-    "test": "tsx --test broker/*.test.ts opencode/contact.test.ts opencode/control.test.ts opencode/fleet.test.ts opencode/health.test.ts opencode/inbound-store.test.ts opencode/notice-ingress.test.ts opencode/runtime.test.ts opencode/team.test.ts opencode/tui.test.ts test/*.test.ts",
+    "test": "tsx --test broker/*.test.ts opencode/contact.test.ts opencode/control.test.ts opencode/fleet.test.ts opencode/health.test.ts opencode/inbound-store.test.ts opencode/notice-ingress.test.ts opencode/runtime.test.ts opencode/team.test.ts opencode/tui.test.ts provider/*.test.ts test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
