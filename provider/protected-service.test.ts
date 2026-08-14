@@ -287,7 +287,7 @@ test("provider has zero runtime imports or integration and start fails before re
 
 test("protected-provider packaging does not activate or advertise Boss", () => {
   assert.deepEqual(DORMANT_BROKER_CAPABILITIES, {
-    baseProtocolVersion: 3,
+    baseProtocolVersion: 4,
     features: [],
   });
 });

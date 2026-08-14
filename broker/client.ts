@@ -13,6 +13,7 @@ import {
 import { assertExactKeys } from "@dataforxyz/agent-intercom-core/canonical";
 import { parseBossSessionMetadata, parseBoundBossControl } from "./boss.ts";
 import { writeMessage, createMessageReader } from "./framing.ts";
+import { intercomScopeIdFromEnv, parseIntercomScopeId } from "../protocol-v4/contract.ts";
 import { PersistentOutboundOutbox } from "../outbound-outbox.ts";
 import { loadRemoteAccessCredential, writeRemoteSessionCredential, type LoadedRemoteAccessCredential } from "./access-credential.ts";
 import {
@@ -36,6 +37,15 @@ export interface SendOptions {
   replyTo?: string;
   expectsReply?: boolean;
   messageId?: string;
+}
+
+export interface IntercomClientOptions {
+  /** Return true only for durable outbox targets that may be replayed after registration. */
+  authorizeOutboxReplayTarget?: (target: string) => boolean;
+  /** Exact private registration scope captured for this client lifecycle. */
+  scopeId?: string;
+  /** Environment used only when scopeId is not explicitly supplied. */
+  env?: NodeJS.ProcessEnv;
 }
 
 export interface SendResult {
@@ -338,6 +348,7 @@ function isRemoteAccessMetadata(value: unknown): value is import("../types.ts").
 
 export class IntercomClient extends EventEmitter {
   private socket: net.Socket | null = null;
+  private readonly scopeId: string | undefined;
   private _sessionId: string | null = null;
   private pendingSends = new Map<string, {
     accepted: boolean;
@@ -357,6 +368,13 @@ export class IntercomClient extends EventEmitter {
   private remoteAccessCredential: LoadedRemoteAccessCredential | undefined;
   private disconnecting = false;
   private disconnectError: Error | null = null;
+
+  constructor(private readonly options: IntercomClientOptions = {}) {
+    super();
+    this.scopeId = options.scopeId === undefined
+      ? intercomScopeIdFromEnv(options.env ?? process.env)
+      : parseIntercomScopeId(options.scopeId, "scopeId");
+  }
 
   private failPending(error: Error): void {
     for (const pending of this.pendingSends.values()) {
@@ -527,6 +545,7 @@ export class IntercomClient extends EventEmitter {
           session,
           ...(!this.remoteAccessCredential && sessionId ? { sessionId } : {}),
           ...(this.remoteAccessCredential ? { access: this.remoteAccessCredential.access } : {}),
+          ...(this.scopeId ? { scopeId: this.scopeId } : {}),
           ...(typeof target === "string" ? {} : { stateId: target.stateId }),
         });
       } catch (error) {
@@ -598,6 +617,12 @@ export class IntercomClient extends EventEmitter {
 
         this._sessionId = brokerMessage.sessionId;
         this.outbox = new PersistentOutboundOutbox(brokerMessage.sessionId);
+        const authorizeReplay = this.options.authorizeOutboxReplayTarget;
+        if (authorizeReplay) {
+          for (const entry of this.outbox.list()) {
+            if (!authorizeReplay(entry.to)) this.outbox.remove(entry.message.id);
+          }
+        }
         this.replayOutbox();
         this.emit("_registered", { type: "registered", sessionId: brokerMessage.sessionId });
         break;

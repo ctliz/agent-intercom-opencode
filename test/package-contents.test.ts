@@ -26,6 +26,27 @@ test("published package contains exactly the intended protected-provider source 
 
 });
 
+test("published package ships the canonical protocol-v4 re-export", () => {
+  const packageManifest = manifest();
+  assert.ok(packageManifest.files.includes("protocol-v4/**/*.ts"), "package.json files must include protocol-v4/**/*.ts");
+  assert.ok(packageManifest.files.includes("!protocol-v4/**/*.test.ts"), "package.json files must exclude protocol-v4 tests");
+  assert.ok(existsSync(new URL("protocol-v4/contract.ts", repositoryRoot)), "protocol-v4/contract.ts must exist");
+  assert.ok(existsSync(new URL("protocol-v4/contract.test.ts", repositoryRoot)), "protocol-v4/contract.test.ts must exist");
+  const contract = readFileSync(new URL("protocol-v4/contract.ts", repositoryRoot), "utf8");
+  assert.match(contract, /@dataforxyz\/agent-intercom-core\/protocol-v4/);
+  assert.match(contract, /parseIntercomScopeId/);
+  assert.match(contract, /sameIntercomScope/);
+});
+
+test("package declares protocol-v4 dependency on Core", () => {
+  const packageManifest = manifest();
+  const coreDep = packageManifest.devDependencies?.["@dataforxyz/agent-intercom-core"]
+    ?? packageManifest.dependencies?.["@dataforxyz/agent-intercom-core"];
+  assert.ok(coreDep, "@dataforxyz/agent-intercom-core must be declared");
+  // Must remain an immutable git ref (no local file: paths in the release manifest).
+  assert.doesNotMatch(coreDep, /^file:/, "Core dependency must not be a local file path in the release manifest");
+});
+
 test("protected provider is neither an export, plugin, executable, nor ordinary build entry", () => {
   const packageManifest = manifest();
   const ordinaryBuild = readFileSync(new URL("scripts/build.mjs", repositoryRoot), "utf8");

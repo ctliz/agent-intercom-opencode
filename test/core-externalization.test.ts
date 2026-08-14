@@ -11,7 +11,7 @@ import {
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const bundles = ["plugin.mjs", "tui.mjs", "broker.mjs"] as const;
-const exactCoreDevGit = "git+https://github.com/dataforxyz/agent-intercom-core.git#8316cbab548f422ad11c78ed887fabeef94817c1";
+const exactCoreDevGit = "git+https://github.com/ctliz/agent-intercom-core.git#aad1985e125516b318181560293145bf2507cc6d";
 
 test("Core source matcher covers the package root and every subpath only", () => {
   assert.equal(isCoreImport(CORE_PACKAGE), true);

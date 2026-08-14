@@ -4,6 +4,7 @@ import { basename } from "path";
 import { cwd as processCwd } from "process";
 import { IntercomClient } from "../broker/client.ts";
 import { spawnBrokerIfNeeded } from "../broker/spawn.ts";
+import { intercomScopeIdFromEnv } from "../protocol-v4/contract.ts";
 import { getAskTimeoutMs, loadConfig } from "../config.ts";
 import { DurableInboundStore, getOpenCodeInboundStatePath, type DurableInboundEntry, type InboundDeliveryStore } from "./inbound-store.ts";
 import type { Attachment, Message, SessionInfo } from "../types.ts";
@@ -182,6 +183,7 @@ export interface OpenCodeIntercomRuntimeOptions {
   prepareConnection?: () => Promise<void>;
   reconnectDelays?: number[];
   onInboundActivity?: (from: SessionInfo, message: Message) => void | Promise<void>;
+  capturedScopeId?: string;
 }
 
 export class OpenCodeIntercomRuntime {
@@ -198,6 +200,7 @@ export class OpenCodeIntercomRuntime {
   private onConnectionState?: ConnectionStateHandler;
   private inboundStore: InboundDeliveryStore;
   private readonly clientFactory: () => IntercomClient;
+  private readonly capturedScopeId: string | undefined;
   private readonly prepareConnection: () => Promise<void>;
   private readonly reconnectDelays: number[];
   private readonly onInboundActivity?: (from: SessionInfo, message: Message) => void | Promise<void>;
@@ -205,7 +208,18 @@ export class OpenCodeIntercomRuntime {
   constructor(identity?: OpenCodeRuntimeIdentity, cwd?: string, onInboundMessage?: InboundMessageHandler, inboundStore?: InboundDeliveryStore, options: OpenCodeIntercomRuntimeOptions = {}) {
     this.identity = identity ?? buildOpenCodeRuntimeIdentity(process.env, cwd);
     this.onInboundMessage = onInboundMessage;
-    this.clientFactory = options.clientFactory ?? (() => new IntercomClient());
+    // Capture AGENT_INTERCOM_SCOPE_ID exactly once at runtime construction so that
+    // reconnects reuse the same private scope even if process.env is mutated later.
+    this.capturedScopeId = options.capturedScopeId !== undefined
+      ? options.capturedScopeId
+      : intercomScopeIdFromEnv(process.env);
+    // Freeze the exact env value the client should see for scope resolution.
+    // When capturedScopeId is undefined (unscoped), pass an empty env so the client
+    // does not silently re-read a later-mutated AGENT_INTERCOM_SCOPE_ID.
+    const scopeSnapshot: NodeJS.ProcessEnv = this.capturedScopeId
+      ? { AGENT_INTERCOM_SCOPE_ID: this.capturedScopeId }
+      : {};
+    this.clientFactory = options.clientFactory ?? (() => new IntercomClient({ env: scopeSnapshot }));
     this.prepareConnection = options.prepareConnection ?? (async () => {
       const config = loadConfig();
       if (!config.enabled) throw new Error("Intercom disabled");

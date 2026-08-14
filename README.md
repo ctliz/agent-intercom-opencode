@@ -4,16 +4,35 @@
 
 | Harness | Repository |
 |---|---|
-| Pi | [`agent-intercom-pi`](https://github.com/dataforxyz/agent-intercom-pi) |
-| Codex | [`agent-intercom-codex`](https://github.com/dataforxyz/agent-intercom-codex) |
-| Claude Code | [`agent-intercom-claude`](https://github.com/dataforxyz/agent-intercom-claude) |
-| OpenCode | [`agent-intercom-opencode`](https://github.com/dataforxyz/agent-intercom-opencode) |
+| Core / Protocol | [`agent-intercom-core`](https://github.com/ctliz/agent-intercom-core) |
+| Pi | [`agent-intercom-pi`](https://github.com/ctliz/agent-intercom-pi) |
+| Codex | [`agent-intercom-codex`](https://github.com/ctliz/agent-intercom-codex) |
+| Claude Code | [`agent-intercom-claude`](https://github.com/ctliz/agent-intercom-claude) |
+| OpenCode | [`agent-intercom-opencode`](https://github.com/ctliz/agent-intercom-opencode) |
+| Fleet lifecycle | [`agent-intercom-orchestrator`](https://github.com/ctliz/agent-intercom-orchestrator) |
+
+## Maintenance & Upstream Provenance
+
+- **Maintained by `ctliz`**: This distribution is maintained independently by [ctliz](https://github.com/ctliz).
+- **Upstream Heritage**: Agent Intercom grew from [Nico Bailon's original `pi-intercom`](https://github.com/nicobailon/pi-intercom) and the upstream [`dataforxyz/agent-intercom-*`](https://github.com/dataforxyz/agent-intercom-opencode) repositories. This project is not officially endorsed by or affiliated with upstream organizations.
+- **Branding & Compatibility**: The **Agent Intercom** branding and `@dataforxyz/*` package namespaces remain unchanged for full ecosystem compatibility across all agent adapters.
+
+## Protocol v4 & Broker-Enforced Scope
+
+Agent Intercom protocol v4 introduces **broker-enforced scope routing** via `AGENT_INTERCOM_SCOPE_ID`:
+
+- **Registration**: The client submits its `scopeId` once in the top-level registration payload.
+- **Broker Enforcement**: The shared local broker stores the scope in its private `ConnectedSession` record and enforces same-scope discovery (`intercom_list`), naming, and prefix matching.
+- **Cross-Scope Routing**: Cross-scope messaging is fail-closed; communication across different scopes is permitted only when addressing an explicit full session ID.
+- **UX Routing Isolation**: Scope is designed for same-OS-user workflow isolation (e.g. per-project or per-workspace agent teams), **not** as a cryptographic security principal, tenant boundary, or authentication credential.
+- **Leak-Free**: The raw `scopeId` value never enters `SessionInfo`, list payloads, lifecycle events, frontend displays, or execution logs.
+- **Standalone First**: `AGENT_INTERCOM_SCOPE_ID` is a general shell/IDE/service launcher contract. Agent Intercom works completely standalone in any terminal, tmux window, or script; TmuxDeck is optional visual tooling.
 
 ## Origin and thanks
 
 Agent Intercom grew from [Nico Bailon's original `pi-intercom`](https://github.com/nicobailon/pi-intercom). A sincere thank you to Nico and the original contributors for creating the Pi extension and the foundation this cross-harness family builds on.
 
-This repository contains the OpenCode adapter. It gives OpenCode native intercom tools, durable wakeable sessions, and an optional `agent_fleet` manager tool backed by [`agent-intercom-orchestrator`](https://github.com/dataforxyz/agent-intercom-orchestrator). OpenCode can now participate as either a persistent coworker or an explicitly configured primary manager.
+This repository contains the OpenCode adapter. It gives OpenCode native intercom tools, durable wakeable sessions, and an optional `agent_fleet` manager tool backed by [`agent-intercom-orchestrator`](https://github.com/ctliz/agent-intercom-orchestrator). OpenCode can now participate as either a persistent coworker or an explicitly configured primary manager.
 
 ## What It Does
 
@@ -29,7 +48,7 @@ This repository contains the OpenCode adapter. It gives OpenCode native intercom
 
 ## Status
 
-Protocol-v3 compatible with the matching Pi, Codex, and Claude Code adapters.
+Protocol-v4 compatible with the matching Pi, Codex, and Claude Code adapters.
 
 Proven working:
 
@@ -39,13 +58,13 @@ Proven working:
 - fresh OpenCode receivers can be reached from Pi
 - busy headless `opencode run` receivers can wake after their current turn
   finishes
-- verified exactly-once inbound delivery in headless run mode
+- verified durable inbound delivery with receiver deduplication in headless run mode
 - verified crash-safe durable inbound replay and unresolved-ask retention
 - verified persistent worker restart with the same OpenCode session ID and retained memory
 - verified OpenCode-manager spawn, status, logs, cgroup cleanup, and forget through native `agent_fleet`
 - headless server receivers persist and acknowledge queued messages, then inject asynchronously so long model turns do not make the broker evict a healthy peer
 - sends survive reconnects in a durable sender outbox and replay with the same ID
-- incompatible older brokers are detected and replaced safely
+- incompatible older brokers fail closed without killing, downgrading, or creating second islands
 - ask defer/cancel controls are broker-acknowledged, and timed-out asks remain late-replyable
 
 ## Practical Pi parity
@@ -63,13 +82,15 @@ The harnesses still present differently. Pi has native extension commands, a sco
 
 ## Install
 
-Install the published package under OpenCode's configuration directory:
+Install from GitHub at the exact release tag under OpenCode's configuration directory:
 
 ```bash
 mkdir -p ~/.config/opencode
 cd ~/.config/opencode
-npm install @dataforxyz/agent-intercom-opencode
+npm install github:ctliz/agent-intercom-opencode#v0.11.0-connect.1
 ```
+
+> The public npm package `@dataforxyz/agent-intercom-opencode` is **not yet published**. GitHub at the exact connect tag is the only supported install path for this release.
 
 The packaged `dist` files are prebuilt. Add the server plugin to your normal OpenCode config (usually `~/.config/opencode/opencode.json`), replacing `/home/you` with your absolute home path:
 
@@ -112,18 +133,18 @@ No wrapper alias is required for OpenCode as a worker: once both config files ar
 Install both Pi packages, then restart Pi or run `/reload`:
 
 ```bash
-pi install npm:@dataforxyz/agent-intercom-pi
-pi install npm:@dataforxyz/agent-intercom-orchestrator
+pi install git:github.com/ctliz/agent-intercom-pi@v0.11.0-connect.1
+pi install git:github.com/ctliz/agent-intercom-orchestrator@v0.11.0-connect.1
 ```
 
 Inside Pi, run `agent_fleet({ action: "doctor" })` to confirm this OpenCode plugin is visible in OpenCode's resolved configuration. The orchestrator Pi package provides the `agent_fleet` tool, `/agents*` commands, scoped footer, and bundled manager Agent Skill.
 
 ### Enable OpenCode as the primary fleet manager
 
-Install the orchestrator package globally so its `agent-intercom-fleet` executable is available:
+Install the orchestrator package so its `agent-intercom-fleet` executable is available:
 
 ```bash
-npm install -g @dataforxyz/agent-intercom-orchestrator
+pi install git:github.com/ctliz/agent-intercom-orchestrator@v0.11.0-connect.1
 ```
 
 Then start the one OpenCode session that should own persistent coworker creation:
@@ -162,7 +183,7 @@ uses `wl-copy`, `xclip`, or `xsel`; macOS uses `pbcopy`, and Windows uses
 - `intercom_whoami`: show this session's intercom ID, name, cwd, and model
 - `intercom_team`: show the current manager and live coworkers owned by that manager
 - `intercom_status`: show connection status and pending message counts
-- `intercom_list`: list local Pi, Codex, Claude, and OpenCode sessions globally
+- `intercom_list`: list local Pi, Codex, Claude, and OpenCode sessions in your scope (protocol v4 is same-scope; cross-scope contact requires an exact full session ID)
 - `intercom_set_summary`: publish a short discoverable status
 - `intercom_send`: send a non-blocking message
 - `intercom_ask`: send a question and wait briefly for the target's reply
@@ -308,6 +329,13 @@ The release workflow verifies that the tag points into `main`, runs typecheck,
 tests, and the build, publishes the public npm package with trusted OIDC
 provenance, and creates the GitHub Release. Existing npm versions and GitHub
 Releases are skipped safely when a workflow is rerun.
+
+## Compatibility, Migration & Rollback
+
+- **Single Shared Broker**: All adapters on the machine connect to one local broker over a Unix domain socket (`~/.pi/agent/intercom/broker.sock` or `$PI_CODING_AGENT_DIR/intercom/broker.sock`).
+- **All-or-Nothing Family Upgrade**: Protocol v4 is a family-wide change. Every adapter on the machine (`pi`, `claude`, `codex`, `opencode`, `orchestrator`) must be upgraded together in the same maintenance window. A partially upgraded machine is not a supported configuration.
+- **Fail-Closed Legacy Handling**: An incompatible legacy (v3) broker or client fails closed. It is rejected at negotiation and never killed, never downgraded, and never allowed to form a second broker island.
+- **Family Rollback (all-or-nothing)**: Rolling back is family-wide. Restore the exact specs and lockfiles you backed up before the upgrade, for every adapter together, then reload all active agent sessions. There is no published pre-v4 tag under `ctliz` to roll back to, so a pre-upgrade backup of the exact installed specs/locks is the supported rollback material. Rolling back only one adapter leaves the family in an unsupported mixed state.
 
 ## License
 

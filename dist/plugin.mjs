@@ -2,6 +2,30 @@
 import { appendFileSync } from "fs";
 import { tool } from "@opencode-ai/plugin";
 
+// protocol-v4/contract.ts
+import {
+  INTERCOM_PROTOCOL_NAME,
+  INTERCOM_PROTOCOL_V4_SEMANTICS_HASH,
+  INTERCOM_PROTOCOL_V4_VECTOR_SCHEMA_VERSION,
+  INTERCOM_PROTOCOL_V4_VECTORS,
+  INTERCOM_PROTOCOL_VERSION,
+  INTERCOM_SCOPE_ENV,
+  INTERCOM_SCOPE_ID_PATTERN,
+  INTERCOM_SCOPE_ID_PATTERN_SOURCE,
+  sameIntercomScope
+} from "@dataforxyz/agent-intercom-core/protocol-v4";
+function parseIntercomScopeId(value, path = "identifier") {
+  if (value === void 0 || value === "") return void 0;
+  if (typeof value !== "string" || !INTERCOM_SCOPE_ID_PATTERN.test(value)) {
+    throw new Error("Invalid identifier");
+  }
+  return value;
+}
+function intercomScopeIdFromEnv(env = process.env) {
+  const val = env[INTERCOM_SCOPE_ENV];
+  return parseIntercomScopeId(val, INTERCOM_SCOPE_ENV);
+}
+
 // opencode/runtime.ts
 import { randomUUID as randomUUID4, createHash as createHash2 } from "crypto";
 import { spawnSync } from "child_process";
@@ -172,8 +196,8 @@ import { homedir } from "os";
 var INTERCOM_DIR_MODE = 448;
 var INTERCOM_RUNTIME_FILE_MODE = 384;
 var INTERCOM_TCP_HOST = "127.0.0.1";
-var INTERCOM_PROTOCOL_NAME = "pi-intercom";
-var INTERCOM_PROTOCOL_VERSION = 3;
+var INTERCOM_PROTOCOL_NAME2 = "pi-intercom";
+var INTERCOM_PROTOCOL_VERSION2 = 4;
 function sanitizePipeSegment(value) {
   return value.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase() || "default";
 }
@@ -606,7 +630,14 @@ function isRemoteAccessMetadata(value) {
   return access.origin === "remote" && typeof access.remoteHostId === "string" && typeof access.parentSessionId === "string" && typeof access.rootSessionId === "string" && typeof access.generation === "number" && Number.isSafeInteger(access.generation) && access.generation > 0 && typeof access.canDelegate === "boolean" && typeof access.depth === "number" && Number.isSafeInteger(access.depth) && typeof access.maxDepth === "number" && Number.isSafeInteger(access.maxDepth) && typeof access.maxChildren === "number" && Number.isSafeInteger(access.maxChildren) && (access.sessionCredential === void 0 || typeof access.sessionCredential === "string");
 }
 var IntercomClient = class extends EventEmitter {
+  constructor(options = {}) {
+    super();
+    this.options = options;
+    this.scopeId = options.scopeId === void 0 ? intercomScopeIdFromEnv(options.env ?? process.env) : parseIntercomScopeId(options.scopeId, "scopeId");
+  }
+  options;
   socket = null;
+  scopeId;
   _sessionId = null;
   pendingSends = /* @__PURE__ */ new Map();
   pendingLists = /* @__PURE__ */ new Map();
@@ -759,11 +790,12 @@ var IntercomClient = class extends EventEmitter {
       try {
         writeMessage(socket, {
           type: "register",
-          protocol: INTERCOM_PROTOCOL_NAME,
-          version: INTERCOM_PROTOCOL_VERSION,
+          protocol: INTERCOM_PROTOCOL_NAME2,
+          version: INTERCOM_PROTOCOL_VERSION2,
           session,
           ...!this.remoteAccessCredential && sessionId ? { sessionId } : {},
           ...this.remoteAccessCredential ? { access: this.remoteAccessCredential.access } : {},
+          ...this.scopeId ? { scopeId: this.scopeId } : {},
           ...typeof target === "string" ? {} : { stateId: target.stateId }
         });
       } catch (error) {
@@ -787,7 +819,7 @@ var IntercomClient = class extends EventEmitter {
     }
     switch (brokerMessage.type) {
       case "registered": {
-        if (typeof brokerMessage.sessionId !== "string" || brokerMessage.protocol !== INTERCOM_PROTOCOL_NAME || brokerMessage.version !== INTERCOM_PROTOCOL_VERSION) {
+        if (typeof brokerMessage.sessionId !== "string" || brokerMessage.protocol !== INTERCOM_PROTOCOL_NAME2 || brokerMessage.version !== INTERCOM_PROTOCOL_VERSION2) {
           throw new Error("Invalid registered message");
         }
         if (brokerMessage.boss !== void 0 || brokerMessage.capabilities !== void 0) {
@@ -816,6 +848,12 @@ var IntercomClient = class extends EventEmitter {
         }
         this._sessionId = brokerMessage.sessionId;
         this.outbox = new PersistentOutboundOutbox(brokerMessage.sessionId);
+        const authorizeReplay = this.options.authorizeOutboxReplayTarget;
+        if (authorizeReplay) {
+          for (const entry of this.outbox.list()) {
+            if (!authorizeReplay(entry.to)) this.outbox.remove(entry.message.id);
+          }
+        }
         this.replayOutbox();
         this.emit("_registered", { type: "registered", sessionId: brokerMessage.sessionId });
         break;
@@ -1343,7 +1381,7 @@ function isBrokerHealthOkMessage(message, requestId) {
     return false;
   }
   const response = message;
-  if (response.type !== "health_ok" || response.requestId !== requestId || response.protocol !== INTERCOM_PROTOCOL_NAME || response.version !== INTERCOM_PROTOCOL_VERSION || response.endpoint !== "local") return false;
+  if (response.type !== "health_ok" || response.requestId !== requestId || response.protocol !== INTERCOM_PROTOCOL_NAME2 || response.version !== INTERCOM_PROTOCOL_VERSION2 || response.endpoint !== "local") return false;
   const remoteAccess = response.remoteAccess;
   if (typeof remoteAccess !== "object" || remoteAccess === null || Array.isArray(remoteAccess)) return false;
   const contract = remoteAccess;
@@ -1983,13 +2021,16 @@ var OpenCodeIntercomRuntime = class {
   onConnectionState;
   inboundStore;
   clientFactory;
+  capturedScopeId;
   prepareConnection;
   reconnectDelays;
   onInboundActivity;
   constructor(identity, cwd, onInboundMessage, inboundStore, options = {}) {
     this.identity = identity ?? buildOpenCodeRuntimeIdentity(process.env, cwd);
     this.onInboundMessage = onInboundMessage;
-    this.clientFactory = options.clientFactory ?? (() => new IntercomClient());
+    this.capturedScopeId = options.capturedScopeId !== void 0 ? options.capturedScopeId : intercomScopeIdFromEnv(process.env);
+    const scopeSnapshot = this.capturedScopeId ? { AGENT_INTERCOM_SCOPE_ID: this.capturedScopeId } : {};
+    this.clientFactory = options.clientFactory ?? (() => new IntercomClient({ env: scopeSnapshot }));
     this.prepareConnection = options.prepareConnection ?? (async () => {
       const config = loadConfig();
       if (!config.enabled) throw new Error("Intercom disabled");
@@ -3150,6 +3191,7 @@ function listScope(value) {
   throw new Error('scope must be one of "machine", "directory", or "repo"');
 }
 var OpenCodeIntercomPlugin = async ({ client, directory, serverUrl }) => {
+  const capturedScopeId = intercomScopeIdFromEnv(process.env);
   let activeSessionID = process.env.OPENCODE_INTERCOM_TARGET_SESSION?.trim() || process.env.OPENCODE_SESSION_ID?.trim() || void 0;
   let activeSessionStatus = "idle";
   const knownSessionIDs = /* @__PURE__ */ new Set();
@@ -3448,6 +3490,7 @@ var OpenCodeIntercomPlugin = async ({ client, directory, serverUrl }) => {
     }
   }
   runtime = new OpenCodeIntercomRuntime(void 0, directory, injectInbound, void 0, {
+    capturedScopeId,
     onInboundActivity(from) {
       if (!fleetManagementEnabled) return;
       void invokeAgentFleet({ action: "renew", id: from.id }, {

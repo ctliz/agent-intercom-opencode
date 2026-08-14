@@ -1,5 +1,6 @@
 import { appendFileSync } from "fs";
 import { tool, type Plugin } from "@opencode-ai/plugin";
+import { intercomScopeIdFromEnv } from "../protocol-v4/contract.ts";
 import { OpenCodeIntercomRuntime, formatAttachments, formatSessionDisplay, type PendingInboundMessage } from "./runtime.ts";
 import { normalizeOpenCodeSessionStatus, OpenCodePeerHealthReporter } from "./health.ts";
 import { invokeAgentFleet, isFleetManagementEnabled } from "./fleet.ts";
@@ -41,6 +42,8 @@ function listScope(value: string | undefined): "machine" | "directory" | "repo" 
 }
 
 export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, serverUrl }) => {
+  // Capture scope at entry and fail-closed immediately if invalid
+  const capturedScopeId = intercomScopeIdFromEnv(process.env);
   let activeSessionID = process.env.OPENCODE_INTERCOM_TARGET_SESSION?.trim() || process.env.OPENCODE_SESSION_ID?.trim() || undefined;
   let activeSessionStatus = "idle";
   const knownSessionIDs = new Set<string>();
@@ -375,6 +378,7 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
   }
 
   runtime = new OpenCodeIntercomRuntime(undefined, directory, injectInbound, undefined, {
+    capturedScopeId,
     onInboundActivity(from) {
       if (!fleetManagementEnabled) return;
       void invokeAgentFleet({ action: "renew", id: from.id }, {

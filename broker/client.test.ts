@@ -317,8 +317,8 @@ test("ordinary client rejects Boss session metadata and feature-shaped registrat
     type: "registered",
     sessionId: "ordinary-session",
     protocol: "pi-intercom",
-    version: 3,
-    capabilities: { baseProtocolVersion: 3, features: [] },
+    version: 4,
+    capabilities: { baseProtocolVersion: 4, features: [] },
   }), /must not contain feature or Boss metadata/);
 
   (client as any)._sessionId = "ordinary-session";

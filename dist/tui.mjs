@@ -52,6 +52,19 @@ if (Object.keys(CONTROL_KIND_BY_TYPE).length !== BOSS_CONTROL_TYPES.length) {
 // broker/framing.ts
 var MAX_FRAME_BYTES = 1024 * 1024;
 
+// protocol-v4/contract.ts
+import {
+  INTERCOM_PROTOCOL_NAME,
+  INTERCOM_PROTOCOL_V4_SEMANTICS_HASH,
+  INTERCOM_PROTOCOL_V4_VECTOR_SCHEMA_VERSION,
+  INTERCOM_PROTOCOL_V4_VECTORS,
+  INTERCOM_PROTOCOL_VERSION,
+  INTERCOM_SCOPE_ENV,
+  INTERCOM_SCOPE_ID_PATTERN,
+  INTERCOM_SCOPE_ID_PATTERN_SOURCE,
+  sameIntercomScope
+} from "@dataforxyz/agent-intercom-core/protocol-v4";
+
 // broker/paths.ts
 import { chmodSync, mkdirSync, readFileSync } from "fs";
 import { isAbsolute, join, resolve } from "path";
