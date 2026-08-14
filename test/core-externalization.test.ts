@@ -11,7 +11,7 @@ import {
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const bundles = ["plugin.mjs", "tui.mjs", "broker.mjs"] as const;
-const exactCoreDevGit = "git+https://github.com/ctliz/agent-intercom-core.git#aad1985e125516b318181560293145bf2507cc6d";
+const exactCoreDevGit = "git+https://github.com/ctliz/agent-intercom-core.git#37e074970e2a9de32a16fc325607c3b476b0bd45";
 
 test("Core source matcher covers the package root and every subpath only", () => {
   assert.equal(isCoreImport(CORE_PACKAGE), true);
@@ -19,7 +19,10 @@ test("Core source matcher covers the package root and every subpath only", () =>
   assert.equal(isCoreImport(`${CORE_PACKAGE}/boss/policy`), true);
   assert.equal(isCoreImport(`${CORE_PACKAGE}/future/nested/export`), true);
   assert.equal(isCoreImport(`${CORE_PACKAGE}-lookalike`), false);
-  assert.equal(isCoreImport("@dataforxyz/agent-intercom"), false);
+  assert.equal(isCoreImport("@ctliz/agent-intercom"), false);
+  // The retired namespace must never be treated as Core, root or subpath.
+  assert.equal(isCoreImport("@dataforxyz/agent-intercom-core"), false);
+  assert.equal(isCoreImport("@dataforxyz/agent-intercom-core/boss"), false);
 
   const buildSource = readFileSync(join(root, "scripts/build.mjs"), "utf8");
   assert.match(buildSource, /plugins: \[externalizeCorePlugin\]/);
@@ -31,14 +34,14 @@ test("every dist bundle retains Core imports without embedding a second copy", (
   for (const bundle of bundles) {
     const source = readFileSync(join(root, "dist", bundle), "utf8");
     const coreSpecifiers = Array.from(
-      source.matchAll(/from\s+["'](@dataforxyz\/agent-intercom-core(?:\/[^"']*)?)["']/g),
+      source.matchAll(/from\s+["'](@ctliz\/agent-intercom-core(?:\/[^"']*)?)["']/g),
       match => match[1],
     );
     assert.ok(coreSpecifiers.length > 0, `${bundle} must retain at least one external Core import`);
     assert.ok(coreSpecifiers.every(isCoreImport), `${bundle} contains an invalid Core import`);
     assert.doesNotMatch(
       source,
-      /node_modules\/@dataforxyz\/agent-intercom-core\//,
+      /node_modules\/@ctliz\/agent-intercom-core\//,
       `${bundle} must not embed Core implementation modules`,
     );
   }
@@ -63,8 +66,8 @@ test("shipped TUI resolves against an explicitly supplied Core package offline",
   const fixture = mkdtempSync(join(tmpdir(), "opencode-intercom-offline-core-"));
   try {
     const modules = join(fixture, "node_modules");
-    const adapterDir = join(modules, "@dataforxyz", "agent-intercom-opencode");
-    const coreDir = join(modules, "@dataforxyz", "agent-intercom-core");
+    const adapterDir = join(modules, "@ctliz", "agent-intercom-opencode");
+    const coreDir = join(modules, "@ctliz", "agent-intercom-core");
     mkdirSync(adapterDir, { recursive: true });
     cpSync(join(root, "package.json"), join(adapterDir, "package.json"));
     cpSync(join(root, "dist"), join(adapterDir, "dist"), { recursive: true });

@@ -12,7 +12,7 @@ const supportedBossFeature = Object.freeze({
 export const OPENCODE_BOSS_PROTECTED_PROVIDER_BUILD_IDENTITY = Object.freeze({
     contractVersion: "opencode.boss-protected-provider.v1",
     adapterId: "opencode",
-    providerPackage: "@dataforxyz/agent-intercom-opencode",
+    providerPackage: "@ctliz/agent-intercom-opencode",
     supportedBaseProtocolVersions: Object.freeze([4]),
     supportedFeatures: Object.freeze([supportedBossFeature]),
     protocolFeatureContractHash: "dae30efe2c48d2de0fe72a7ebdfd107d3feaefc180d42056ba05df6088a94364",

@@ -9,8 +9,8 @@ import {
   BOSS_POLICY_SEMANTICS_HASH,
   BOSS_RUN_FEATURE_CONTRACT,
   type BossPolicyRole,
-} from "@dataforxyz/agent-intercom-core/boss";
-import { brokerGeneration, participantBindingEpoch } from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/boss";
+import { brokerGeneration, participantBindingEpoch } from "@ctliz/agent-intercom-core/canonical";
 
 function local(id: string): SessionInfo {
   return { id, name: id, cwd: "/tmp", model: "test", pid: 1, startedAt: 1, lastActivity: 1, origin: "local" };

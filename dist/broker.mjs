@@ -8,8 +8,8 @@ import {
   authorize,
   POLICY_SEMANTICS_HASH,
   POLICY_SEMANTICS_VERSION
-} from "@dataforxyz/agent-intercom-core";
-import { assertExactKeys as assertExactKeys3 } from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core";
+import { assertExactKeys as assertExactKeys3 } from "@ctliz/agent-intercom-core/canonical";
 
 // broker/framing.ts
 var MAX_FRAME_BYTES = 1024 * 1024;
@@ -86,7 +86,7 @@ import {
   INTERCOM_SCOPE_ID_PATTERN,
   INTERCOM_SCOPE_ID_PATTERN_SOURCE,
   sameIntercomScope
-} from "@dataforxyz/agent-intercom-core/protocol-v4";
+} from "@ctliz/agent-intercom-core/protocol-v4";
 function parseIntercomScopeId(value, path = "identifier") {
   if (value === void 0 || value === "") return void 0;
   if (typeof value !== "string" || !INTERCOM_SCOPE_ID_PATTERN.test(value)) {
@@ -646,7 +646,7 @@ var RemoteAccessRegistry = class {
 // broker/authorization.ts
 import {
   authorizeFeatureAware
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 
 // broker/boss.ts
 import {
@@ -655,12 +655,12 @@ import {
   parseBossParticipantBinding,
   parseBossPolicyPrincipal,
   parseFeatureRegistration
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 import {
   ContractValidationError,
   assertExactKeys,
   assertRecord
-} from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/canonical";
 var CONTROL_KIND_BY_TYPE = {
   "boss.assignment.created": "assignment_request",
   "boss.assignment.accepted": "assignment_response",
@@ -810,13 +810,13 @@ import { existsSync as existsSync2, readFileSync as readFileSync4 } from "node:f
 import { dirname as dirname2 } from "node:path";
 import {
   parseBossControlEnvelope as parseBossControlEnvelope2
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 import {
   canonicalJson,
   assertExactKeys as assertExactKeys2,
   assertRecord as assertRecord2,
   participantBindingEpoch
-} from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/canonical";
 var STATE_VERSION = 1;
 var CONTROL_KINDS = [
   "assignment_request",
@@ -1117,7 +1117,7 @@ import {
   INTERCOM_BASE_PROTOCOL_VERSION,
   evaluateBrokerCompatibility,
   parseBrokerCapabilityAdvertisement
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 if (INTERCOM_PROTOCOL_VERSION2 !== INTERCOM_BASE_PROTOCOL_VERSION) {
   throw new Error(
     `OpenCode protocol v${INTERCOM_PROTOCOL_VERSION2} diverges from Core base protocol v${INTERCOM_BASE_PROTOCOL_VERSION}`

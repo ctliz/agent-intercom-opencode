@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { participantBindingEpoch } from "@dataforxyz/agent-intercom-core/canonical";
+import { participantBindingEpoch } from "@ctliz/agent-intercom-core/canonical";
 import {
   DURABLE_JSON_FILE_OPERATIONS,
   writeDurableJson,

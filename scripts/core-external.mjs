@@ -1,8 +1,8 @@
-export const CORE_PACKAGE = "@dataforxyz/agent-intercom-core";
+export const CORE_PACKAGE = "@ctliz/agent-intercom-core";
 
 // Match the package root and every exported (or future) subpath without
 // accidentally externalizing similarly named packages.
-export const CORE_IMPORT_PATTERN = /^@dataforxyz\/agent-intercom-core(?:\/.*)?$/;
+export const CORE_IMPORT_PATTERN = /^@ctliz\/agent-intercom-core(?:\/.*)?$/;
 
 export function isCoreImport(specifier) {
   return CORE_IMPORT_PATTERN.test(specifier);

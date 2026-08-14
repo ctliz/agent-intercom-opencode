@@ -5,11 +5,11 @@ import { spawnSync } from "node:child_process";
 import {
   POLICY_SEMANTICS_HASH,
   POLICY_SEMANTICS_VERSION
-} from "@dataforxyz/agent-intercom-core";
+} from "@ctliz/agent-intercom-core";
 import {
   parseBossControlEnvelope as parseBossControlEnvelope2
-} from "@dataforxyz/agent-intercom-core/boss";
-import { assertExactKeys as assertExactKeys2 } from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/boss";
+import { assertExactKeys as assertExactKeys2 } from "@ctliz/agent-intercom-core/canonical";
 
 // broker/boss.ts
 import {
@@ -18,12 +18,12 @@ import {
   parseBossParticipantBinding,
   parseBossPolicyPrincipal,
   parseFeatureRegistration
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 import {
   ContractValidationError,
   assertExactKeys,
   assertRecord
-} from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/canonical";
 var CONTROL_KIND_BY_TYPE = {
   "boss.assignment.created": "assignment_request",
   "boss.assignment.accepted": "assignment_response",
@@ -63,7 +63,7 @@ import {
   INTERCOM_SCOPE_ID_PATTERN,
   INTERCOM_SCOPE_ID_PATTERN_SOURCE,
   sameIntercomScope
-} from "@dataforxyz/agent-intercom-core/protocol-v4";
+} from "@ctliz/agent-intercom-core/protocol-v4";
 
 // broker/paths.ts
 import { chmodSync, mkdirSync, readFileSync } from "fs";
@@ -116,7 +116,7 @@ import { fileURLToPath } from "url";
 import {
   POLICY_SEMANTICS_HASH as POLICY_SEMANTICS_HASH2,
   POLICY_SEMANTICS_VERSION as POLICY_SEMANTICS_VERSION2
-} from "@dataforxyz/agent-intercom-core";
+} from "@ctliz/agent-intercom-core";
 var INTERCOM_DIR = getIntercomDirPath();
 var EXTENSION_DIR = join2(dirname(fileURLToPath(import.meta.url)), "..");
 var BROKER_PID = join2(INTERCOM_DIR, "broker.pid");

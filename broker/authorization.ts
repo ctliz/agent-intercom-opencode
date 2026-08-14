@@ -4,8 +4,8 @@ import {
   type BossPolicyAction,
   type FeatureAwareAuthorizationDecision,
   type FeatureAwarePolicyState,
-} from "@dataforxyz/agent-intercom-core/boss";
-import type { PolicyAction, PolicyPrincipal, PolicyState } from "@dataforxyz/agent-intercom-core/policy";
+} from "@ctliz/agent-intercom-core/boss";
+import type { PolicyAction, PolicyPrincipal, PolicyState } from "@ctliz/agent-intercom-core/policy";
 import { validatedBossMetadata } from "./boss.ts";
 import type { SessionInfo } from "../types.ts";
 

@@ -9,9 +9,9 @@ import {
   POLICY_SEMANTICS_VERSION,
   type PolicyAction,
   type PolicyState,
-} from "@dataforxyz/agent-intercom-core";
-import type { BossControlEnvelope, BossControlKind } from "@dataforxyz/agent-intercom-core/boss";
-import { assertExactKeys, type ParticipantBindingEpoch } from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core";
+import type { BossControlEnvelope, BossControlKind } from "@ctliz/agent-intercom-core/boss";
+import { assertExactKeys, type ParticipantBindingEpoch } from "@ctliz/agent-intercom-core/canonical";
 import { writeMessage, createMessageReader } from "./framing.ts";
 import { parseIntercomScopeId, sameIntercomScope } from "../protocol-v4/contract.ts";
 import {

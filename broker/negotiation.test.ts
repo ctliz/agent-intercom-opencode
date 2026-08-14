@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { INTERCOM_BASE_PROTOCOL_VERSION } from "@dataforxyz/agent-intercom-core/boss";
+import { INTERCOM_BASE_PROTOCOL_VERSION } from "@ctliz/agent-intercom-core/boss";
 import { INTERCOM_PROTOCOL_VERSION } from "./paths.ts";
 import {
   DORMANT_BROKER_CAPABILITIES,

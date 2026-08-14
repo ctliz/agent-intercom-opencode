@@ -7,12 +7,12 @@ import {
   type BossControlEnvelope,
   type BossControlKind,
   type BossControlType,
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 import {
   ContractValidationError,
   assertExactKeys,
   assertRecord,
-} from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/canonical";
 import type { BossSessionMetadata, SessionInfo } from "../types.ts";
 
 const CONTROL_KIND_BY_TYPE = {

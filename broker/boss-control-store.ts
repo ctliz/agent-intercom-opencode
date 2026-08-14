@@ -4,14 +4,14 @@ import {
   parseBossControlEnvelope,
   type BossControlEnvelope,
   type BossControlKind,
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 import {
   canonicalJson,
   assertExactKeys,
   assertRecord,
   participantBindingEpoch,
   type ParticipantBindingEpoch,
-} from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/canonical";
 import { writeDurableJson } from "../durable-json.ts";
 import { ensureIntercomRuntimeDir } from "./paths.ts";
 import { bossControlKind } from "./boss.ts";

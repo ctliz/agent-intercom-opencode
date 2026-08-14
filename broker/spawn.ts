@@ -8,7 +8,7 @@ import { randomUUID } from "crypto";
 import {
   POLICY_SEMANTICS_HASH,
   POLICY_SEMANTICS_VERSION,
-} from "@dataforxyz/agent-intercom-core";
+} from "@ctliz/agent-intercom-core";
 import { createMessageReader, writeMessage } from "./framing.ts";
 import {
   ensureIntercomRuntimeDir,

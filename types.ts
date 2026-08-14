@@ -3,7 +3,7 @@ import type {
   BossFeatureRegistration,
   BossParticipantBinding,
   BossPrivatePrincipal,
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 
 /**
  * Broker-authenticated Boss metadata. It is intentionally absent from

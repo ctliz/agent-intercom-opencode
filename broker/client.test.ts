@@ -7,8 +7,8 @@ import {
   BOSS_POLICY_PRINCIPAL_VERSION,
   BOSS_POLICY_SEMANTICS_HASH,
   BOSS_RUN_FEATURE_CONTRACT,
-} from "@dataforxyz/agent-intercom-core/boss";
-import { brokerGeneration, participantBindingEpoch } from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/boss";
+import { brokerGeneration, participantBindingEpoch } from "@ctliz/agent-intercom-core/canonical";
 import type { SessionInfo } from "../types.ts";
 
 function bossSender(role: "manager" | "worker" = "worker"): SessionInfo {

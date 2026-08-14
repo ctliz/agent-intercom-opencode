@@ -13,7 +13,7 @@ import {
   INTERCOM_SCOPE_ID_PATTERN,
   INTERCOM_SCOPE_ID_PATTERN_SOURCE,
   sameIntercomScope
-} from "@dataforxyz/agent-intercom-core/protocol-v4";
+} from "@ctliz/agent-intercom-core/protocol-v4";
 function parseIntercomScopeId(value, path = "identifier") {
   if (value === void 0 || value === "") return void 0;
   if (typeof value !== "string" || !INTERCOM_SCOPE_ID_PATTERN.test(value)) {
@@ -40,11 +40,11 @@ import { types as nodeUtilTypes } from "node:util";
 import {
   POLICY_SEMANTICS_HASH,
   POLICY_SEMANTICS_VERSION
-} from "@dataforxyz/agent-intercom-core";
+} from "@ctliz/agent-intercom-core";
 import {
   parseBossControlEnvelope as parseBossControlEnvelope2
-} from "@dataforxyz/agent-intercom-core/boss";
-import { assertExactKeys as assertExactKeys2 } from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/boss";
+import { assertExactKeys as assertExactKeys2 } from "@ctliz/agent-intercom-core/canonical";
 
 // broker/boss.ts
 import {
@@ -53,12 +53,12 @@ import {
   parseBossParticipantBinding,
   parseBossPolicyPrincipal,
   parseFeatureRegistration
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 import {
   ContractValidationError,
   assertExactKeys,
   assertRecord
-} from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/canonical";
 var CONTROL_KIND_BY_TYPE = {
   "boss.assignment.created": "assignment_request",
   "boss.assignment.accepted": "assignment_response",
@@ -1323,7 +1323,7 @@ import { randomUUID as randomUUID3 } from "crypto";
 import {
   POLICY_SEMANTICS_HASH as POLICY_SEMANTICS_HASH2,
   POLICY_SEMANTICS_VERSION as POLICY_SEMANTICS_VERSION2
-} from "@dataforxyz/agent-intercom-core";
+} from "@ctliz/agent-intercom-core";
 var INTERCOM_DIR = getIntercomDirPath();
 var EXTENSION_DIR = join3(dirname2(fileURLToPath(import.meta.url)), "..");
 var BROKER_PID = join3(INTERCOM_DIR, "broker.pid");
@@ -2510,12 +2510,12 @@ import {
   parseDeliveryClaimRecord,
   parseNoticeRecipientIngressEnvelope,
   parseTargetLedgerLookupResult
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 import {
   canonicalJson,
   assertExactKeys as assertExactKeys3,
   assertRecord as assertRecord2
-} from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/canonical";
 var OPENCODE_NOTICE_ATOMIC_INSERTION_VERSION = "opencode.notice-atomic-insertion.v1";
 var OPENCODE_NOTICE_CURRENT_CLAIM_EVIDENCE_VERSION = "opencode.notice-current-claim-evidence.v1";
 var OPENCODE_NOTICE_AUTHORITY_UNAVAILABLE = "OPENCODE_NOTICE_AUTHORITY_UNAVAILABLE";

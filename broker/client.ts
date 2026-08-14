@@ -5,12 +5,12 @@ import { types as nodeUtilTypes } from "node:util";
 import {
   POLICY_SEMANTICS_HASH,
   POLICY_SEMANTICS_VERSION,
-} from "@dataforxyz/agent-intercom-core";
+} from "@ctliz/agent-intercom-core";
 import {
   parseBossControlEnvelope,
   type BossControlEnvelope,
-} from "@dataforxyz/agent-intercom-core/boss";
-import { assertExactKeys } from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/boss";
+import { assertExactKeys } from "@ctliz/agent-intercom-core/canonical";
 import { parseBossSessionMetadata, parseBoundBossControl } from "./boss.ts";
 import { writeMessage, createMessageReader } from "./framing.ts";
 import { intercomScopeIdFromEnv, parseIntercomScopeId } from "../protocol-v4/contract.ts";

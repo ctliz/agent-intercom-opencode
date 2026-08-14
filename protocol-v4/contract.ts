@@ -8,7 +8,7 @@ import {
   INTERCOM_SCOPE_ID_PATTERN,
   INTERCOM_SCOPE_ID_PATTERN_SOURCE,
   sameIntercomScope,
-} from "@dataforxyz/agent-intercom-core/protocol-v4";
+} from "@ctliz/agent-intercom-core/protocol-v4";
 
 export {
   INTERCOM_PROTOCOL_NAME,

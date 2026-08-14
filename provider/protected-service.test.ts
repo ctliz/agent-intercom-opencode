@@ -10,7 +10,7 @@ import {
   BROKER_FEATURE_ATTESTATION_VERSION,
   BROKER_PROTECTED_PROVIDER_ROOT,
   INTERCOM_BASE_PROTOCOL_VERSION,
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 import { DORMANT_BROKER_CAPABILITIES } from "../broker/negotiation.ts";
 import {
   BOSS_PROTECTED_SERVICE_UNAVAILABLE,
@@ -239,7 +239,7 @@ test("source and generated provider expose the same immutable dormant build iden
     assert.ok(Object.isFrozen(identity.supportedFeatures[0]));
     assert.equal(identity.contractVersion, "opencode.boss-protected-provider.v1");
     assert.equal(identity.adapterId, "opencode");
-    assert.equal(identity.providerPackage, "@dataforxyz/agent-intercom-opencode");
+    assert.equal(identity.providerPackage, "@ctliz/agent-intercom-opencode");
     assert.equal(identity.authoritative, false);
     assert.equal(identity.providerStartAvailable, false);
     assert.equal(identity.bossAdvertisementEnabled, false);

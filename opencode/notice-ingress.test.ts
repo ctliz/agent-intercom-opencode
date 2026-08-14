@@ -11,13 +11,13 @@ import {
   type DeliveryClaimRecord,
   type NoticeRecipientIngressEnvelope,
   type TargetLedgerLookupResult,
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 import {
   deliveryClaimGeneration,
   recipientTransferGeneration,
   transitionVersion,
   workerGeneration,
-} from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/canonical";
 import {
   DURABLE_JSON_FILE_OPERATIONS,
   writeDurableJson,

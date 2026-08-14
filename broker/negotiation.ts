@@ -5,7 +5,7 @@ import {
   type BrokerCapabilityAdvertisement,
   type BrokerCompatibilityDecision,
   type BrokerCompatibilityRequest,
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 import { INTERCOM_PROTOCOL_VERSION } from "./paths.ts";
 
 if (INTERCOM_PROTOCOL_VERSION !== INTERCOM_BASE_PROTOCOL_VERSION) {

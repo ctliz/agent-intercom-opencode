@@ -8,13 +8,13 @@ import {
   type DeliveryClaimRecord,
   type NoticeRecipientIngressEnvelope,
   type TargetLedgerLookupResult,
-} from "@dataforxyz/agent-intercom-core/boss";
+} from "@ctliz/agent-intercom-core/boss";
 import {
   canonicalJson,
   assertExactKeys,
   assertRecord,
   type DeliveryClaimGeneration,
-} from "@dataforxyz/agent-intercom-core/canonical";
+} from "@ctliz/agent-intercom-core/canonical";
 import { ensureIntercomRuntimeDir, getIntercomDirPath } from "../broker/paths.ts";
 import { writeDurableJson } from "../durable-json.ts";
 
