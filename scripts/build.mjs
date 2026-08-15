@@ -1,3 +1,4 @@
+import { readFileSync, writeFileSync } from "node:fs";
 import { build } from "esbuild";
 import { externalizeCorePlugin } from "./core-external.mjs";
 
@@ -12,15 +13,13 @@ const common = {
 await Promise.all([
   build({
     ...common,
-    entryPoints: ["opencode/plugin.ts"],
+    entryPoints: ["opencode/plugin-entry.ts"],
     outfile: "dist/plugin.mjs",
-    external: ["@opencode-ai/plugin"],
   }),
   build({
     ...common,
     entryPoints: ["opencode/tui.ts"],
     outfile: "dist/tui.mjs",
-    external: ["@opencode-ai/plugin/tui"],
   }),
   build({
     ...common,
@@ -28,3 +27,11 @@ await Promise.all([
     outfile: "dist/broker.mjs",
   }),
 ]);
+
+for (const outfile of ["dist/plugin.mjs", "dist/tui.mjs", "dist/broker.mjs"]) {
+  const content = readFileSync(outfile, "utf8");
+  const normalized = content.split("\n").map(l => l.trimEnd()).join("\n");
+  if (normalized !== content) {
+    writeFileSync(outfile, normalized, "utf8");
+  }
+}

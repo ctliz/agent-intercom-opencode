@@ -38,6 +38,57 @@ test("Intercom identity does not conflate the OpenCode session namespace", () =>
   assert.notEqual(fallback.sessionId, "ses_open_code");
 });
 
+test("buildOpenCodeRuntimeIdentity supports generic AGENT_INTERCOM_SESSION_ID and NAME", () => {
+  const identity = buildOpenCodeRuntimeIdentity({
+    AGENT_INTERCOM_SESSION_ID: "tmuxdeck-1a2b3c4d-5e6f-47a8-b9c0-d1e2f3a4b5c6",
+    AGENT_INTERCOM_SESSION_NAME: "workspace · OpenCode 01",
+    PWD: "/tmp/repo",
+  }, "/ignored", 123);
+
+  assert.equal(identity.sessionId, "tmuxdeck-1a2b3c4d-5e6f-47a8-b9c0-d1e2f3a4b5c6");
+  assert.equal(identity.name, "workspace · OpenCode 01");
+});
+
+test("buildOpenCodeRuntimeIdentity prefers harness-specific ID/name over generic", () => {
+  const identity = buildOpenCodeRuntimeIdentity({
+    OPENCODE_INTERCOM_SESSION_ID: "opencode-specific-id",
+    OPENCODE_INTERCOM_NAME: "opencode-specific-name",
+    AGENT_INTERCOM_SESSION_ID: "invalid generic id with spaces",
+    AGENT_INTERCOM_SESSION_NAME: "generic-name",
+    PWD: "/tmp/repo",
+  }, "/ignored", 123);
+
+  assert.equal(identity.sessionId, "opencode-specific-id");
+  assert.equal(identity.name, "opencode-specific-name");
+});
+
+test("buildOpenCodeRuntimeIdentity treats whitespace-only generic ID and name as absent", () => {
+  for (const empty of ["", "   ", "\t\n"]) {
+    const identity = buildOpenCodeRuntimeIdentity({
+      AGENT_INTERCOM_SESSION_ID: empty,
+      AGENT_INTERCOM_SESSION_NAME: empty,
+      PWD: "/tmp/project",
+    }, "/tmp/project", 42);
+
+    assert.match(identity.sessionId, /^opencode-42-[0-9a-f]{8}$/);
+    assert.equal(identity.name, "opencode-project-42");
+  }
+});
+
+test("buildOpenCodeRuntimeIdentity fails closed on invalid non-empty generic AGENT_INTERCOM_SESSION_ID", () => {
+  for (const invalid of ["bad session id with spaces", "bad$symbol!", "a".repeat(129)]) {
+    assert.throws(
+      () => buildOpenCodeRuntimeIdentity({ AGENT_INTERCOM_SESSION_ID: invalid }, "/tmp", 123),
+      (err: any) => {
+        assert.equal(err.message, "Invalid AGENT_INTERCOM_SESSION_ID: must match ^[A-Za-z0-9_-]{1,128}$");
+        assert.equal(err.message.includes(invalid), false);
+        return true;
+      },
+      `must reject invalid generic session ID: ${invalid}`,
+    );
+  }
+});
+
 test("remote session provenance is visible in model-facing labels", () => {
   const remote = { id: "remote", name: "worker", cwd: "/repo", model: "test", pid: 1, startedAt: 1, lastActivity: 1, origin: "remote" as const, remoteHostId: "ika-dev-v3" };
   assert.equal(formatSessionDisplay(remote), "worker [remote:ika-dev-v3]");

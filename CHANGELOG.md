@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.12.0-connect.1 - 2026-08-15
+
+- Self-contained production runtime (`networkRequired: false`): bundle exact reachable `@opencode-ai/plugin` tool and `zod` schema runtime into `dist/plugin.mjs`, eliminating all production runtime npm dependencies (`dependencies` is removed).
+- Default-only production plugin entry shim (`opencode/plugin-entry.ts`) ensuring `dist/plugin.mjs` exports strictly a single callable `default` export with zero non-function named exports for OpenCode CLI 1.18.18 loader parity.
+- Core remains the sole external runtime peer dependency (`@ctliz/agent-intercom-core` 0.2.0).
+- Move `@opencode-ai/plugin` to devDependencies pinned at `1.18.18`.
+- Bundle third-party MIT notices for `@opencode-ai/plugin` and `zod` in `licenses/` and record provenance in `THIRD_PARTY_NOTICES.md`.
+- Support TmuxDeck Auto-Team manifest resolution (`AGENT_INTERCOM_TEAM_MANIFEST`), workspace live roster fallback, and managed coworker inbox resolution.
+
+## 0.11.0-connect.2 - 2026-08-14
+
+- First canonical `@ctliz/*` package namespace migration from legacy `@dataforxyz/*`.
+- Introduce fail-closed namespace migration diagnostics and remove-before-install upgrade tooling across install surfaces.
+- Align canonical GitHub owner to `ctliz`.
+
 ## 0.11.0-connect.1 - 2026-08-14
 
 - Support Protocol v4 broker-enforced scope isolation (`AGENT_INTERCOM_SCOPE_ID`) and canonical `ctliz` distribution.

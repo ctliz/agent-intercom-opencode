@@ -126,6 +126,9 @@ var BROKER_SPAWN_LOCK = join2(INTERCOM_DIR, "broker.spawn.lock");
 var DEFAULT_ASK_TIMEOUT_MS = 45 * 1e3;
 var MAX_ASK_TIMEOUT_MS = 120 * 1e3;
 
+// opencode/team.ts
+import { readTeamManifestAsync, TeamManifestError } from "@ctliz/agent-intercom-core/team-manifest";
+
 // opencode/contact.ts
 function copyText(text, platform = process.platform) {
   const candidates = platform === "darwin" ? [["pbcopy", []]] : platform === "win32" ? [["clip.exe", []]] : [["wl-copy", []], ["xclip", ["-selection", "clipboard"]], ["xsel", ["--clipboard", "--input"]]];

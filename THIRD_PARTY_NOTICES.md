@@ -11,6 +11,22 @@ permission notice are reproduced in [`licenses/MIT-pi-intercom.txt`](licenses/MI
 Those notices must be retained with copies or substantial portions of the
 original MIT-licensed material.
 
+## @opencode-ai/plugin
+
+The production plugin bundle (`dist/plugin.mjs`) embeds reachable tool runtime
+code from [`@opencode-ai/plugin`](https://github.com/anomalyco/opencode) (version 1.18.18).
+
+The original work is licensed under the MIT License. Its copyright and
+permission notice are reproduced in [`licenses/MIT-opencode-ai-plugin.txt`](licenses/MIT-opencode-ai-plugin.txt).
+
+## zod
+
+The production plugin bundle (`dist/plugin.mjs`) embeds reachable schema runtime
+code from [`zod`](https://github.com/colinhacks/zod) (version 4.1.8).
+
+The original work is licensed under the MIT License. Its copyright and
+permission notice are reproduced in [`licenses/MIT-zod.txt`](licenses/MIT-zod.txt).
+
 The current repository, including later modifications and the combined work,
 is distributed under the GNU Affero General Public License v3.0 or later as
 stated in [`LICENSE`](LICENSE). Previously published MIT-licensed versions

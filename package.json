@@ -1,6 +1,6 @@
 {
   "name": "@ctliz/agent-intercom-opencode",
-  "version": "0.11.0-connect.2",
+  "version": "0.12.0-connect.1",
   "description": "OpenCode plugin for direct local messaging with Pi, Codex, Claude, and OpenCode coding-agent sessions.",
   "license": "AGPL-3.0-or-later",
   "type": "module",
@@ -54,18 +54,16 @@
     "codex",
     "claude"
   ],
-  "dependencies": {
-    "@opencode-ai/plugin": "^1.17.15"
-  },
   "devDependencies": {
-    "@ctliz/agent-intercom-core": "git+https://github.com/ctliz/agent-intercom-core.git#37e074970e2a9de32a16fc325607c3b476b0bd45",
+    "@ctliz/agent-intercom-core": "0.2.0",
+    "@opencode-ai/plugin": "1.18.18",
     "@types/node": "^24.0.0",
     "esbuild": "^0.28.1",
     "tsx": "^4.20.0",
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
-    "@ctliz/agent-intercom-core": "0.1.0"
+    "@ctliz/agent-intercom-core": "0.2.0"
   },
   "publishConfig": {
     "access": "public"

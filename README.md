@@ -15,7 +15,11 @@
 
 - **Maintained by `ctliz`**: This distribution is maintained independently by [ctliz](https://github.com/ctliz).
 - **Upstream Heritage**: Agent Intercom grew from [Nico Bailon's original `pi-intercom`](https://github.com/nicobailon/pi-intercom) and the upstream [`dataforxyz/agent-intercom-*`](https://github.com/dataforxyz/agent-intercom-opencode) repositories. This project is not officially endorsed by or affiliated with upstream organizations.
-- **Package Namespace**: The canonical npm namespace is `@ctliz/*`. The historical `@dataforxyz/*` namespace was used up to and including `connect.1` and is retained only as provenance and as a migration-detection input; it is never treated as a current or healthy installation. The **Agent Intercom** branding and the `intercom_*` API surface are unchanged.
+- **Package Namespace History**:
+  1. `0.11.0-connect.1`: Historical `@dataforxyz/*` namespace line
+  2. `0.11.0-connect.2`: First canonical `@ctliz/*` package namespace migration line
+  3. `0.12.0-connect.1`: Coordinated canonical Auto-Team line with self-contained production runtime (`networkRequired=false`) and default-only OpenCode CLI loader safety
+- The **Agent Intercom** branding and the `intercom_*` API surface are unchanged.
 
 ## Protocol v4 & Broker-Enforced Scope
 
@@ -87,10 +91,10 @@ Install from GitHub at the exact release tag under OpenCode's configuration dire
 ```bash
 mkdir -p ~/.config/opencode
 cd ~/.config/opencode
-npm install github:ctliz/agent-intercom-opencode#v0.11.0-connect.2
+npm install github:ctliz/agent-intercom-opencode#v0.12.0-connect.1
 ```
 
-> The public npm package `@ctliz/agent-intercom-opencode` is **not yet published**. GitHub at the exact connect tag is the only supported install path for this release.
+> The production bundle `dist/plugin.mjs` is self-contained with zero production runtime npm dependencies on `@opencode-ai/plugin`, `zod`, `effect`, or `@ai-sdk/provider`. It requires only the peer dependency `@ctliz/agent-intercom-core@0.2.0`.
 
 The packaged `dist` files are prebuilt. Add the server plugin to your normal OpenCode config (usually `~/.config/opencode/opencode.json`), replacing `/home/you` with your absolute home path:
 
@@ -345,9 +349,9 @@ v3.0 or later](LICENSE) (`AGPL-3.0-or-later`). If you modify this software and
 make the modified version available to users over a network, the AGPL requires
 you to offer those users the corresponding source code.
 
-Portions derived from the original MIT-licensed `pi-intercom` project retain
+Portions derived from the original MIT-licensed `pi-intercom` project, `@opencode-ai/plugin`, and `zod` retain
 their original notices. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and
-[licenses/MIT-pi-intercom.txt](licenses/MIT-pi-intercom.txt). Versions already
+[`licenses/`](licenses/). Versions already
 published under MIT remain available under their original terms. See
 [LICENSE_TRANSITION.md](LICENSE_TRANSITION.md) for the exact commit and tag boundary.
 
@@ -368,4 +372,4 @@ published under MIT remain available under their original terms. See
 
 The `connect.1` tags, source commits, and published release assets are immutable and are not modified by this migration. Release notes may carry an explicit erratum, which corrects the description only and never moves a tag or replaces an asset.
 
-These packages are not published on the npm registry yet; install from the GitHub tags shown above.
+Install from the exact GitHub tags, packaged tarballs, or registered release assets as shown above.
