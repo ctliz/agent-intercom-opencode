@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.12.0-connect.2 - 2026-08-23
+
+- Explicitly disable shell execution for broker, fleet, Git, and clipboard child processes.
+- Publish prerelease builds under their derived npm dist-tag instead of attempting to update `latest`.
+
 ## 0.12.0-connect.1 - 2026-08-15
 
 - Self-contained production runtime (`networkRequired: false`): bundle exact reachable `@opencode-ai/plugin` tool and `zod` schema runtime into `dist/plugin.mjs`, eliminating all production runtime npm dependencies (`dependencies` is removed).
