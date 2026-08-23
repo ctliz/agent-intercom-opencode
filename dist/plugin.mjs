@@ -13860,7 +13860,8 @@ function getBrokerSpawnOptions(extensionDir = EXTENSION_DIR, env = process.env) 
     stdio: "ignore",
     cwd: extensionDir,
     env: { ...env, PI_CODING_AGENT_DIR: getAgentDirPath(env), NODE_NO_WARNINGS: "1" },
-    windowsHide: true
+    windowsHide: true,
+    shell: false
   };
 }
 function toError2(error45) {
@@ -14557,7 +14558,8 @@ function detectGitRoot(cwd) {
   const result = spawnSync("git", ["rev-parse", "--show-toplevel"], {
     cwd,
     encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"]
+    stdio: ["ignore", "pipe", "ignore"],
+    shell: false
   });
   if (result.status !== 0) return null;
   return result.stdout.trim() || null;
@@ -14963,7 +14965,8 @@ async function invokeAgentFleet(params, context, env = process.env) {
     const child = spawn2(command, [], {
       cwd: context.cwd,
       env,
-      stdio: ["pipe", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"],
+      shell: false
     });
     let stdout = "";
     let stderr = "";

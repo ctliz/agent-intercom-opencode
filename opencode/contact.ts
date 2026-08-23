@@ -13,7 +13,7 @@ export function copyText(text: string, platform = process.platform): boolean {
       ? [["clip.exe", []]]
       : [["wl-copy", []], ["xclip", ["-selection", "clipboard"]], ["xsel", ["--clipboard", "--input"]]];
   return candidates.some(([command, args]) => {
-    const result = spawnSync(command, args, { input: text, stdio: ["pipe", "ignore", "ignore"] });
+    const result = spawnSync(command, args, { input: text, stdio: ["pipe", "ignore", "ignore"], shell: false });
     return result.status === 0;
   });
 }

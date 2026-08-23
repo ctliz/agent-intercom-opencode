@@ -133,7 +133,7 @@ import { readTeamManifestAsync, TeamManifestError } from "@ctliz/agent-intercom-
 function copyText(text, platform = process.platform) {
   const candidates = platform === "darwin" ? [["pbcopy", []]] : platform === "win32" ? [["clip.exe", []]] : [["wl-copy", []], ["xclip", ["-selection", "clipboard"]], ["xsel", ["--clipboard", "--input"]]];
   return candidates.some(([command, args]) => {
-    const result = spawnSync(command, args, { input: text, stdio: ["pipe", "ignore", "ignore"] });
+    const result = spawnSync(command, args, { input: text, stdio: ["pipe", "ignore", "ignore"], shell: false });
     return result.status === 0;
   });
 }

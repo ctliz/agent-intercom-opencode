@@ -25,6 +25,7 @@ export async function invokeAgentFleet(
       cwd: context.cwd,
       env,
       stdio: ["pipe", "pipe", "pipe"],
+      shell: false,
     });
     let stdout = "";
     let stderr = "";
