@@ -1,6 +1,6 @@
 {
   "name": "@ctliz/agent-intercom-opencode",
-  "version": "0.12.0-connect.3",
+  "version": "0.12.0-connect.4",
   "description": "OpenCode plugin for direct local messaging with Pi, Codex, Claude, and OpenCode coding-agent sessions.",
   "license": "AGPL-3.0-or-later",
   "type": "module",
