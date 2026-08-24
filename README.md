@@ -95,7 +95,7 @@ Install from GitHub at the exact release tag under OpenCode's configuration dire
 ```bash
 mkdir -p ~/.config/opencode
 cd ~/.config/opencode
-npm install @ctliz/agent-intercom-opencode@0.12.0-connect.4
+npm install @ctliz/agent-intercom-opencode@0.12.0-connect.5
 ```
 
 > The production bundle `dist/plugin.mjs` is self-contained with zero production runtime npm dependencies on `@opencode-ai/plugin`, `zod`, `effect`, or `@ai-sdk/provider`. It requires only the peer dependency `@ctliz/agent-intercom-core@0.2.0`.
@@ -141,8 +141,8 @@ No wrapper alias is required for OpenCode as a worker: once both config files ar
 Install both Pi packages, then restart Pi or run `/reload`:
 
 ```bash
-pi install git:github.com/ctliz/agent-intercom-pi@v0.12.0-connect.5
-pi install git:github.com/ctliz/agent-intercom-orchestrator@v0.12.0-connect.3
+pi install git:github.com/ctliz/agent-intercom-pi@v0.12.0-connect.6
+pi install git:github.com/ctliz/agent-intercom-orchestrator@v0.12.0-connect.4
 ```
 
 Inside Pi, run `agent_fleet({ action: "doctor" })` to confirm this OpenCode plugin is visible in OpenCode's resolved configuration. The orchestrator Pi package provides the `agent_fleet` tool, `/agents*` commands, scoped footer, and bundled manager Agent Skill.
@@ -152,7 +152,7 @@ Inside Pi, run `agent_fleet({ action: "doctor" })` to confirm this OpenCode plug
 Install the orchestrator package so its `agent-intercom-fleet` executable is available:
 
 ```bash
-pi install git:github.com/ctliz/agent-intercom-orchestrator@v0.12.0-connect.3
+pi install git:github.com/ctliz/agent-intercom-orchestrator@v0.12.0-connect.4
 ```
 
 Then start the one OpenCode session that should own persistent coworker creation:
