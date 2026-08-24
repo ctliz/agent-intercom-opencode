@@ -1,6 +1,6 @@
 # OpenCode Intercom
 
-**Agent Intercom** is a cross-harness, same-machine messaging system for coding agents. Its Pi, Codex, Claude Code, and OpenCode adapters share one local broker and protocol, so sessions can discover and message each other regardless of which harness they run in.
+**Agent Intercom** is a cross-harness, same-machine messaging system for coding agents. Its Pi, Codex, Claude Code, OpenCode, Grok Build, and AGY adapters share one local broker and protocol, so sessions can discover and message each other regardless of which harness they run in.
 
 | Harness | Repository |
 |---|---|
@@ -9,7 +9,11 @@
 | Codex | [`agent-intercom-codex`](https://github.com/ctliz/agent-intercom-codex) |
 | Claude Code | [`agent-intercom-claude`](https://github.com/ctliz/agent-intercom-claude) |
 | OpenCode | [`agent-intercom-opencode`](https://github.com/ctliz/agent-intercom-opencode) |
+| Grok Build | [`agent-intercom-grok`](https://github.com/ctliz/agent-intercom-grok) |
+| AGY | [`agent-intercom-agy`](https://github.com/ctliz/agent-intercom-agy) |
 | Fleet lifecycle | [`agent-intercom-orchestrator`](https://github.com/ctliz/agent-intercom-orchestrator) |
+
+Grok Build and AGY use lightweight npm-packaged MCP launchers backed by the Claude MCP runtime. They retain inbound messages for `intercom_pending` polling but do not provide wake-on-message.
 
 ## Maintenance & Upstream Provenance
 
@@ -91,7 +95,7 @@ Install from GitHub at the exact release tag under OpenCode's configuration dire
 ```bash
 mkdir -p ~/.config/opencode
 cd ~/.config/opencode
-npm install github:ctliz/agent-intercom-opencode#v0.12.0-connect.1
+npm install @ctliz/agent-intercom-opencode@0.12.0-connect.3
 ```
 
 > The production bundle `dist/plugin.mjs` is self-contained with zero production runtime npm dependencies on `@opencode-ai/plugin`, `zod`, `effect`, or `@ai-sdk/provider`. It requires only the peer dependency `@ctliz/agent-intercom-core@0.2.0`.
@@ -137,8 +141,8 @@ No wrapper alias is required for OpenCode as a worker: once both config files ar
 Install both Pi packages, then restart Pi or run `/reload`:
 
 ```bash
-pi install git:github.com/ctliz/agent-intercom-pi@v0.11.0-connect.2
-pi install git:github.com/ctliz/agent-intercom-orchestrator@v0.11.0-connect.2
+pi install git:github.com/ctliz/agent-intercom-pi@v0.12.0-connect.4
+pi install git:github.com/ctliz/agent-intercom-orchestrator@v0.12.0-connect.2
 ```
 
 Inside Pi, run `agent_fleet({ action: "doctor" })` to confirm this OpenCode plugin is visible in OpenCode's resolved configuration. The orchestrator Pi package provides the `agent_fleet` tool, `/agents*` commands, scoped footer, and bundled manager Agent Skill.
@@ -148,7 +152,7 @@ Inside Pi, run `agent_fleet({ action: "doctor" })` to confirm this OpenCode plug
 Install the orchestrator package so its `agent-intercom-fleet` executable is available:
 
 ```bash
-pi install git:github.com/ctliz/agent-intercom-orchestrator@v0.11.0-connect.2
+pi install git:github.com/ctliz/agent-intercom-orchestrator@v0.12.0-connect.2
 ```
 
 Then start the one OpenCode session that should own persistent coworker creation:
