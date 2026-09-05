@@ -9,6 +9,16 @@ import { getAskTimeoutMs, loadConfig } from "../config.ts";
 import { DurableInboundStore, getOpenCodeInboundStatePath, type DurableInboundEntry, type InboundDeliveryStore } from "./inbound-store.ts";
 import type { Attachment, Message, SessionInfo } from "../types.ts";
 import { formatIntercomTeam, resolveIntercomTeam } from "./team.ts";
+import {
+  createNamedTeam,
+  findNamedTeam,
+  formatCreateSuccess,
+  formatJoinableNamedTeamList,
+  formatNamedJoinSuccess,
+  listNamedTeams,
+  parseTeamName,
+  rejectManagedJoin,
+} from "./named-teams.ts";
 
 export interface OpenCodeRuntimeIdentity {
   sessionId: string;
@@ -216,7 +226,7 @@ export class OpenCodeIntercomRuntime {
   private onConnectionState?: ConnectionStateHandler;
   private inboundStore: InboundDeliveryStore;
   private readonly clientFactory: () => IntercomClient;
-  private readonly capturedScopeId: string | undefined;
+  private capturedScopeId: string | undefined;
   private readonly prepareConnection: () => Promise<void>;
   private readonly reconnectDelays: number[];
   private readonly onInboundActivity?: (from: SessionInfo, message: Message) => void | Promise<void>;
@@ -229,13 +239,11 @@ export class OpenCodeIntercomRuntime {
     this.capturedScopeId = options.capturedScopeId !== undefined
       ? options.capturedScopeId
       : intercomScopeIdFromEnv(process.env);
-    // Freeze the exact env value the client should see for scope resolution.
-    // When capturedScopeId is undefined (unscoped), pass an empty env so the client
-    // does not silently re-read a later-mutated AGENT_INTERCOM_SCOPE_ID.
-    const scopeSnapshot: NodeJS.ProcessEnv = this.capturedScopeId
-      ? { AGENT_INTERCOM_SCOPE_ID: this.capturedScopeId }
-      : {};
-    this.clientFactory = options.clientFactory ?? (() => new IntercomClient({ env: scopeSnapshot }));
+    // Reconnects reuse capturedScopeId even if process.env is mutated later.
+    // An explicit join/create updates capturedScopeId, then rebuilds the client.
+    this.clientFactory = options.clientFactory ?? (() => new IntercomClient({
+      env: this.capturedScopeId ? { AGENT_INTERCOM_SCOPE_ID: this.capturedScopeId } : {},
+    }));
     this.prepareConnection = options.prepareConnection ?? (async () => {
       const config = loadConfig();
       if (!config.enabled) throw new Error("Intercom disabled");
@@ -346,6 +354,50 @@ export class OpenCodeIntercomRuntime {
     const client = this.client;
     this.client = null;
     if (client) await client.disconnect();
+  }
+
+  async switchRuntimeScope(nextScopeId: string, managerSessionId?: string): Promise<void> {
+    if (managerSessionId) process.env.AGENT_INTERCOM_MANAGER_TARGET = managerSessionId;
+    else delete process.env.AGENT_INTERCOM_MANAGER_TARGET;
+    if (this.capturedScopeId === nextScopeId && process.env.AGENT_INTERCOM_SCOPE_ID === nextScopeId) {
+      return;
+    }
+    this.reconnectEnabled = false;
+    this.clearReconnectTimer();
+    if (this.connectPromise) {
+      try { await this.connectPromise; } catch { /* ignore in-flight connect */ }
+    }
+    const previous = this.client;
+    this.client = null;
+    if (previous) await previous.disconnect().catch(() => undefined);
+    this.capturedScopeId = nextScopeId;
+    process.env.AGENT_INTERCOM_SCOPE_ID = nextScopeId;
+    this.reconnectEnabled = true;
+    await this.connect();
+  }
+
+  async join(name?: string, create = false): Promise<ToolResult> {
+    const blocked = rejectManagedJoin();
+    if (blocked) return textResult(blocked, { ok: false }, true);
+    try {
+      if (create) {
+        if (typeof name !== "string" || !name.trim()) {
+          return textResult("Creating a team requires a name.", { ok: false }, true);
+        }
+        const team = createNamedTeam({ name: parseTeamName(name), managerSessionId: this.identity.sessionId });
+        await this.switchRuntimeScope(team.scopeId, team.managerSessionId);
+        return textResult(formatCreateSuccess({ team: team.name, name: this.identity.name }), { ok: true, team: team.name, role: "manager" });
+      }
+      if (!name?.trim()) {
+        return textResult(formatJoinableNamedTeamList(listNamedTeams()));
+      }
+      const team = findNamedTeam(parseTeamName(name));
+      if (!team) return textResult("Could not join that team.", { ok: false }, true);
+      await this.switchRuntimeScope(team.scopeId, team.managerSessionId);
+      return textResult(formatNamedJoinSuccess({ team: team.name, name: this.identity.name }), { ok: true, team: team.name, role: "teammate" });
+    } catch (error) {
+      return textResult(error instanceof Error ? error.message : String(error), { ok: false }, true);
+    }
   }
 
   private handleIncomingMessage(from: SessionInfo, message: Message, deliveryId: string): void {

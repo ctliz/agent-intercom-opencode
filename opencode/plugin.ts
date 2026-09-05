@@ -453,6 +453,11 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
         if (result.isError) throw new Error(result.content.map(part => part.text).join("\n"));
         return result.structuredContent ?? { ok: true };
       }
+      if (action.type === "join") {
+        const result = await runtime.join(action.name, action.create === true);
+        if (result.isError) throw new Error(result.content.map(part => part.text).join("\n"));
+        return { text: result.content.map(part => part.text).join("\n") };
+      }
       throw new Error("Unsupported OpenCode intercom action.");
     },
   });
@@ -512,6 +517,18 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
         async execute(_args, context) {
           setActiveSession(context.sessionID);
           return resultText(await runtime.team());
+        },
+      }),
+
+      intercom_join: tool({
+        description: "List, join, or create a named intercom team without tmux. Omit name to list joinable teams. Set create=true to create a team and join as manager.",
+        args: {
+          name: tool.schema.string().optional().describe("Team name to join. Omit to list joinable teams."),
+          create: tool.schema.boolean().optional().describe("Create this named team and join as manager. Requires name."),
+        },
+        async execute(args, context) {
+          setActiveSession(context.sessionID);
+          return resultText(await runtime.join(args.name, args.create === true));
         },
       }),
 

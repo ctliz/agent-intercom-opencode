@@ -6,7 +6,8 @@ import { getIntercomDirPath, restrictIntercomRuntimeFile } from "../broker/paths
 export type OpenCodeControlAction =
   | { type: "whoami" }
   | { type: "list" }
-  | { type: "send"; to: string; message: string };
+  | { type: "send"; to: string; message: string }
+  | { type: "join"; name?: string; create?: boolean };
 
 export interface OpenCodeControlRequest {
   id: string;

@@ -1,6 +1,6 @@
 {
   "name": "@ctliz/agent-intercom-opencode",
-  "version": "0.12.0-connect.7",
+  "version": "0.12.0-connect.8",
   "description": "OpenCode plugin for local messaging with Pi, Codex, Claude Code, Grok Build, and AGY agents.",
   "license": "AGPL-3.0-or-later",
   "type": "module",
@@ -43,7 +43,7 @@
     "build:protected-provider": "node scripts/build-protected-provider.mjs",
     "prepack": "npm run build:protected-provider",
     "prepare": "npm run build",
-    "test": "tsx --test broker/*.test.ts opencode/contact.test.ts opencode/control.test.ts opencode/fleet.test.ts opencode/health.test.ts opencode/inbound-store.test.ts opencode/notice-ingress.test.ts opencode/runtime.test.ts opencode/team.test.ts opencode/tui.test.ts protocol-v4/*.test.ts provider/*.test.ts test/*.test.ts",
+    "test": "tsx --test broker/*.test.ts opencode/contact.test.ts opencode/control.test.ts opencode/fleet.test.ts opencode/health.test.ts opencode/inbound-store.test.ts opencode/named-teams.test.ts opencode/notice-ingress.test.ts opencode/runtime.test.ts opencode/team.test.ts opencode/tui.test.ts protocol-v4/*.test.ts provider/*.test.ts test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [

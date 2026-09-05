@@ -88,6 +88,57 @@ async function showIntercom(api: TuiPluginApi, dialog: TuiDialogStack): Promise<
   });
 }
 
+async function showCreateTeam(api: TuiPluginApi, dialog: TuiDialogStack): Promise<void> {
+  await withActiveSession(api, async sessionId => {
+    dialog.replace(() => api.ui.DialogPrompt({
+      title: "Create intercom team",
+      placeholder: "Team name",
+      onCancel: () => dialog.clear(),
+      onConfirm: async name => {
+        const team = name.trim();
+        if (!team) return;
+        dialog.clear();
+        const result = await requestOpenCodeControl(sessionId, { type: "join", name: team, create: true }, 12_000);
+        if (!result.ok) {
+          toastError(api, result.error ?? "Could not create that team.");
+          return;
+        }
+        const text = result.value && typeof result.value === "object" && "text" in result.value && typeof result.value.text === "string"
+          ? result.value.text
+          : `Created team ${team}.`;
+        api.ui.toast({ title: "Intercom", message: text, variant: "success", duration: 5000 });
+      },
+    }));
+  });
+}
+
+async function showJoinTeam(api: TuiPluginApi, dialog: TuiDialogStack): Promise<void> {
+  await withActiveSession(api, async sessionId => {
+    dialog.replace(() => api.ui.DialogPrompt({
+      title: "Join intercom team",
+      placeholder: "Team name (empty lists teams)",
+      onCancel: () => dialog.clear(),
+      onConfirm: async name => {
+        dialog.clear();
+        const team = name.trim();
+        const result = await requestOpenCodeControl(
+          sessionId,
+          team ? { type: "join", name: team } : { type: "join" },
+          12_000,
+        );
+        if (!result.ok) {
+          toastError(api, result.error ?? "Could not join that team.");
+          return;
+        }
+        const text = result.value && typeof result.value === "object" && "text" in result.value && typeof result.value.text === "string"
+          ? result.value.text
+          : (team ? `Joined team ${team}.` : "No joinable named teams found.");
+        api.ui.toast({ title: "Intercom", message: text, variant: "info", duration: 5000 });
+      },
+    }));
+  });
+}
+
 async function copyIntercomId(api: TuiPluginApi): Promise<void> {
   await withActiveSession(api, async sessionId => {
     const response = await requestOpenCodeControl(sessionId, { type: "whoami" });
@@ -131,6 +182,22 @@ const module: TuiPluginModule = {
         keybind: "alt+i",
         slash: { name: "intercom-id", aliases: ["intercom-contact"] },
         onSelect: () => copyIntercomId(api),
+      },
+      {
+        title: "Create intercom team",
+        value: "intercom.team.create",
+        description: "Create a named team and join as manager",
+        category: "Intercom",
+        slash: { name: "intercom-create" },
+        onSelect: dialog => showCreateTeam(api, dialog ?? api.ui.dialog),
+      },
+      {
+        title: "Join intercom team",
+        value: "intercom.team.join",
+        description: "Join a named team, or list joinable teams",
+        category: "Intercom",
+        slash: { name: "intercom-join" },
+        onSelect: dialog => showJoinTeam(api, dialog ?? api.ui.dialog),
       },
     ]);
   },

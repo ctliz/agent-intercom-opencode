@@ -22,7 +22,7 @@ Grok Build and AGY are supported as first-class protocol peers through two dedic
 | Grok Build | [`@ctliz/agent-intercom-grok`](https://www.npmjs.com/package/@ctliz/agent-intercom-grok) | `agent-intercom-grok-mcp` |
 | AGY | [`@ctliz/agent-intercom-agy`](https://www.npmjs.com/package/@ctliz/agent-intercom-agy) | `agent-intercom-agy-mcp` |
 
-The host packages depend on `@ctliz/agent-intercom-claude` and load its MCP runtime internally. Users do **not** need to install or place `claude-intercom-mcp` on `PATH` separately. Once connected, Grok and AGY sessions share the same local broker and protocol as Pi, Codex, Claude Code, and OpenCode, and expose all nine MCP operations: `intercom_whoami`, `intercom_list`, `intercom_send`, `intercom_ask`, `intercom_reply`, `intercom_pending`, `intercom_status`, `intercom_team`, and `intercom_set_summary`.
+The host packages depend on `@ctliz/agent-intercom-claude` and load its MCP runtime internally. Users do **not** need to install or place `claude-intercom-mcp` on `PATH` separately. Once connected, Grok and AGY sessions share the same local broker and protocol as Pi, Codex, Claude Code, and OpenCode, and expose the MCP operations: `intercom_whoami`, `intercom_list`, `intercom_send`, `intercom_ask`, `intercom_reply`, `intercom_pending`, `intercom_status`, `intercom_team`, `intercom_join`, and `intercom_set_summary`.
 
 Install the host adapter before installing its plugin:
 
@@ -123,7 +123,7 @@ Install from GitHub at the exact release tag under OpenCode's configuration dire
 ```bash
 mkdir -p ~/.config/opencode
 cd ~/.config/opencode
-npm install @ctliz/agent-intercom-opencode@0.12.0-connect.7
+npm install @ctliz/agent-intercom-opencode@0.12.0-connect.8
 ```
 
 > The production bundle `dist/plugin.mjs` is self-contained with zero production runtime npm dependencies on `@opencode-ai/plugin`, `zod`, `effect`, or `@ai-sdk/provider`. It requires only the peer dependency `@ctliz/agent-intercom-core@0.2.0`.
@@ -169,7 +169,7 @@ No wrapper alias is required for OpenCode as a worker: once both config files ar
 Install both Pi packages, then restart Pi or run `/reload`:
 
 ```bash
-pi install git:github.com/ctliz/agent-intercom-pi@v0.12.0-connect.8
+pi install git:github.com/ctliz/agent-intercom-pi@v0.12.0-connect.9
 pi install git:github.com/ctliz/agent-intercom-orchestrator@v0.12.0-connect.5
 ```
 
@@ -206,6 +206,8 @@ Fleet management is opt-in. Orchestrator-owned OpenCode workers receive `AGENT_I
 |---|---|---|
 | Choose a connected agent, compose, and send a message | `/intercom` | **Alt+M** |
 | Copy this session's exact intercom target | `/intercom-id` | **Alt+I** |
+| Create a named team and join as manager | `/intercom-create` | |
+| Join a named team, or list joinable teams | `/intercom-join` | |
 
 `/intercom-contact` remains an alias for `/intercom-id`. The copy command uses
 the identity owned by the server plugin, so it remains correct even when the
@@ -218,6 +220,7 @@ uses `wl-copy`, `xclip`, or `xsel`; macOS uses `pbcopy`, and Windows uses
 
 - `intercom_whoami`: show this session's intercom ID, name, cwd, and model
 - `intercom_team`: show the current manager and live coworkers owned by that manager
+- `intercom_join`: list, join, or create a named team without tmux (`create: true` joins as manager)
 - `intercom_status`: show connection status and pending message counts
 - `intercom_list`: list local Pi, Codex, Claude, and OpenCode sessions in your scope (protocol v4 is same-scope; cross-scope contact requires an exact full session ID)
 - `intercom_set_summary`: publish a short discoverable status
