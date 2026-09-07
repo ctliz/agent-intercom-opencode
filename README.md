@@ -123,7 +123,7 @@ Install from GitHub at the exact release tag under OpenCode's configuration dire
 ```bash
 mkdir -p ~/.config/opencode
 cd ~/.config/opencode
-npm install @ctliz/agent-intercom-opencode@0.12.0-connect.8
+npm install @ctliz/agent-intercom-opencode@0.12.1
 ```
 
 > The production bundle `dist/plugin.mjs` is self-contained with zero production runtime npm dependencies on `@opencode-ai/plugin`, `zod`, `effect`, or `@ai-sdk/provider`. It requires only the peer dependency `@ctliz/agent-intercom-core@0.2.0`.
@@ -169,7 +169,7 @@ No wrapper alias is required for OpenCode as a worker: once both config files ar
 Install both Pi packages, then restart Pi or run `/reload`:
 
 ```bash
-pi install git:github.com/ctliz/agent-intercom-pi@v0.12.0-connect.9
+pi install git:github.com/ctliz/agent-intercom-pi@v0.12.2
 pi install git:github.com/ctliz/agent-intercom-orchestrator@v0.12.0-connect.5
 ```
 

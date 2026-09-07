@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.12.1 - 2026-09-06
+
+- Stable release of named teams without tmux. `intercom_join`, `/intercom-create`, and `/intercom-join` work outside TmuxDeck.
+
 ## 0.12.0-connect.8 - 2026-09-06
 
 - Add `intercom_join` plus `/intercom-create` and `/intercom-join` so OpenCode sessions can create or join a named team without tmux. Named teams share `~/.pi/agent/intercom/named-teams.json` with Pi, Claude, and Codex.
