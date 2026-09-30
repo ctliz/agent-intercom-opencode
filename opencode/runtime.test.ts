@@ -13,12 +13,21 @@ class FakeIntercomClient extends EventEmitter {
   connected = false;
   connectCount = 0;
   sessionId: string | null = null;
+  registrations: any[] = [];
+  presences: Array<{ name?: string; status?: string; model?: string }> = [];
 
   isConnected(): boolean { return this.connected; }
-  async connect(_registration: unknown, sessionId?: string): Promise<void> {
+  async connect(registration?: unknown, sessionId?: string): Promise<void> {
     this.connected = true;
     this.connectCount += 1;
     this.sessionId = sessionId ?? "fake-session";
+    if (registration) this.registrations.push(registration);
+  }
+  updatePresence(updates: { name?: string; status?: string; model?: string }): void {
+    this.presences.push(updates);
+  }
+  async listSessions(): Promise<any[]> {
+    return [];
   }
   async disconnect(): Promise<void> {
     this.connected = false;
@@ -226,5 +235,209 @@ test("inbound delivery is durably queued and acknowledged before model injection
     await injection;
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("runtime pauses reconnect on registration conflict", async () => {
+  let attempts = 0;
+  const runtime = new OpenCodeIntercomRuntime(
+    { sessionId: "conflict-session", name: "contender", cwd: "/repo", model: "test", startedAt: 1 },
+    "/repo",
+    undefined,
+    undefined,
+    {
+      prepareConnection: async () => {},
+      reconnectDelays: [1],
+      clientFactory: () => {
+        attempts++;
+        const client = new FakeIntercomClient();
+        client.connect = async () => {
+          const conflict = Object.assign(new Error("same session another runtime"), { code: "SESSION_ID_IN_USE" });
+          throw new Error("Intercom protocol error", { cause: new Error("Failed to handle message", { cause: conflict }) });
+        };
+        return client as unknown as IntercomClient;
+      },
+    },
+  );
+  try {
+    await assert.rejects(runtime.connect(), /Intercom protocol error/);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const status = await runtime.status();
+    assert.equal(status.isError, true);
+    assert.deepEqual(status.structuredContent?.registration_conflict, {
+      code: "SESSION_ID_IN_USE",
+      message: "same session another runtime",
+    });
+    assert.equal(status.structuredContent?.reconnect_paused, true);
+    assert.equal(status.structuredContent?.connected, false);
+    assert.match(status.content[0]!.text, /Automatic reconnect paused/);
+    await assert.rejects(runtime.connect(), /same session another runtime/);
+    assert.equal(attempts, 1);
+  } finally {
+    await runtime.disconnect();
+  }
+});
+
+test("runtime preserves conflict pause across concurrent connect race", async () => {
+  let attempts = 0;
+  const runtime = new OpenCodeIntercomRuntime(
+    { sessionId: "race-conflict-session", name: "contender", cwd: "/repo", model: "test", startedAt: 1 },
+    "/repo",
+    undefined,
+    undefined,
+    {
+      prepareConnection: async () => {},
+      reconnectDelays: [1],
+      clientFactory: () => {
+        attempts++;
+        const client = new FakeIntercomClient();
+        client.connect = async () => {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          const conflict = Object.assign(new Error("incumbent owner active"), { code: "SESSION_ID_IN_USE" });
+          throw new Error("Registration rejected", { cause: conflict });
+        };
+        return client as unknown as IntercomClient;
+      },
+    },
+  );
+  try {
+    const [res1, res2] = await Promise.allSettled([runtime.connect(), runtime.connect()]);
+    assert.equal(res1.status, "rejected");
+    assert.equal(res2.status, "rejected");
+    assert.equal(attempts, 1, "Only one underlying connection attempt must be made");
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.equal(attempts, 1, "Reconnect must remain paused after raced connection failure");
+
+    const status = await runtime.status();
+    assert.equal(status.isError, true);
+    assert.deepEqual(status.structuredContent?.registration_conflict, {
+      code: "SESSION_ID_IN_USE",
+      message: "incumbent owner active",
+    });
+    assert.equal(status.structuredContent?.reconnect_paused, true);
+  } finally {
+    await runtime.disconnect();
+  }
+});
+
+test("runtime setName updates presence and preserves remembered name on reconnect", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "opencode-setname-"));
+  try {
+    const first = new FakeIntercomClient();
+    const second = new FakeIntercomClient();
+    const clients = [first, second];
+    const runtime = new OpenCodeIntercomRuntime(
+      { sessionId: "stable-session-id", name: "initial-name", cwd: "/repo", model: "test", startedAt: 1 },
+      "/repo",
+      undefined,
+      new DurableInboundStore(join(dir, "inbound.json")),
+      {
+        prepareConnection: async () => {},
+        reconnectDelays: [1],
+        clientFactory: () => clients.shift() as unknown as IntercomClient,
+      },
+    );
+
+    await runtime.connect();
+    assert.equal(first.connectCount, 1);
+    assert.equal(first.registrations[0].name, "initial-name");
+
+    const result = await runtime.setName("Renamed Session");
+    assert.equal(result.isError, undefined);
+    assert.equal(runtime.getIdentity().name, "Renamed Session");
+    assert.equal(runtime.getIdentity().sessionId, "stable-session-id");
+    assert.deepEqual(first.presences, [{ name: "Renamed Session" }]);
+
+    const whoami = await runtime.whoami();
+    assert.equal(whoami.structuredContent?.name, "Renamed Session");
+    assert.equal(whoami.structuredContent?.session_id, "stable-session-id");
+
+    // Drop first connection to trigger automatic reconnect
+    first.drop();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    assert.equal(second.connectCount, 1);
+    assert.equal(second.sessionId, "stable-session-id");
+    assert.equal(second.registrations[0].name, "Renamed Session");
+    assert.equal(second.registrations[0].cwd, "/repo");
+    assert.equal(runtime.getIdentity().name, "Renamed Session");
+    assert.equal(runtime.getIdentity().sessionId, "stable-session-id");
+
+    await runtime.disconnect();
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("runtime setName rejects empty or whitespace names and keeps remembered name", async () => {
+  const runtime = new OpenCodeIntercomRuntime(
+    { sessionId: "test-session", name: "preserved-name", cwd: "/repo", model: "test", startedAt: 1 },
+    "/repo",
+    undefined,
+    undefined,
+    {
+      prepareConnection: async () => {},
+      clientFactory: () => new FakeIntercomClient() as unknown as IntercomClient,
+    },
+  );
+  try {
+    for (const empty of ["", "   ", "\t\n"]) {
+      const res = await runtime.setName(empty);
+      assert.equal(res.isError, true);
+      assert.match(res.content[0]!.text, /cannot be empty/);
+      assert.equal(runtime.getIdentity().name, "preserved-name");
+    }
+    const unchanged = await runtime.setName("preserved-name");
+    assert.equal(unchanged.isError, undefined);
+    assert.equal(unchanged.structuredContent?.ok, true);
+  } finally {
+    await runtime.disconnect();
+  }
+});
+
+test("runtime replays presence update if setName is called while connect is in flight", { timeout: 5000 }, async () => {
+  let resolveConnect: (() => void) | undefined;
+  let enterConnect!: () => void;
+  const enteredConnect = new Promise<void>(resolve => { enterConnect = resolve; });
+  const client = new FakeIntercomClient();
+  const originalConnect = client.connect.bind(client);
+  client.connect = async (reg, sid) => {
+    await new Promise<void>((resolve) => {
+      resolveConnect = resolve;
+      enterConnect();
+    });
+    return originalConnect(reg, sid);
+  };
+
+  const runtime = new OpenCodeIntercomRuntime(
+    { sessionId: "stable-session-id", name: "initial-name", cwd: "/repo", model: "test", startedAt: 1 },
+    "/repo",
+    undefined,
+    undefined,
+    {
+      prepareConnection: async () => {},
+      clientFactory: () => client as unknown as IntercomClient,
+    },
+  );
+
+  try {
+    const connectPromise = runtime.connect();
+    await enteredConnect;
+    assert.ok(resolveConnect, "connect should be waiting on resolveConnect");
+
+    const nameResult = await runtime.setName("Renamed While In Flight");
+    assert.equal(nameResult.isError, undefined);
+    assert.equal(runtime.getIdentity().name, "Renamed While In Flight");
+
+    resolveConnect!();
+    await connectPromise;
+
+    assert.equal(client.registrations[0].name, "initial-name");
+    assert.deepEqual(client.presences, [{ name: "Renamed While In Flight" }]);
+    assert.equal(runtime.getIdentity().name, "Renamed While In Flight");
+  } finally {
+    resolveConnect?.();
+    await runtime.disconnect();
   }
 });

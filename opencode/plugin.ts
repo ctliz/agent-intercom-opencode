@@ -1,4 +1,5 @@
 import { appendFileSync } from "fs";
+import { resolve } from "node:path";
 import { tool, type Plugin } from "@opencode-ai/plugin";
 import { intercomScopeIdFromEnv } from "../protocol-v4/contract.ts";
 import { OpenCodeIntercomRuntime, formatAttachments, formatSessionDisplay, type PendingInboundMessage } from "./runtime.ts";
@@ -41,12 +42,28 @@ function listScope(value: string | undefined): "machine" | "directory" | "repo" 
   throw new Error('scope must be one of "machine", "directory", or "repo"');
 }
 
-export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, serverUrl }) => {
+function isDifferentDirectory(dir1: string, dir2: string): boolean {
+  try {
+    return resolve(dir1) !== resolve(dir2);
+  } catch {
+    return false;
+  }
+}
+
+export interface OpenCodePluginOptions {
+  runtime?: OpenCodeIntercomRuntime;
+}
+
+export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, serverUrl }, pluginOptions?: OpenCodePluginOptions) => {
   // Capture scope at entry and fail-closed immediately if invalid
   const capturedScopeId = intercomScopeIdFromEnv(process.env);
-  let activeSessionID = process.env.OPENCODE_INTERCOM_TARGET_SESSION?.trim() || process.env.OPENCODE_SESSION_ID?.trim() || undefined;
+  const pinnedSessionID = process.env.OPENCODE_INTERCOM_TARGET_SESSION?.trim() || process.env.OPENCODE_SESSION_ID?.trim() || undefined;
+  let activeSessionID = pinnedSessionID;
+  const isTargetSessionPinned = Boolean(pinnedSessionID);
   let activeSessionStatus = "idle";
+  let sessionEventRevision = 0;
   const knownSessionIDs = new Set<string>();
+  const subagentSessionIDs = new Set<string>();
   let flushingInjectQueue = false;
   const pendingInjectQueue: PendingInjectEntry[] = [];
   const deliveredMessageIDs = new Set<string>();
@@ -110,8 +127,11 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
 
   function setActiveSession(sessionID: unknown): void {
     if (typeof sessionID === "string" && sessionID.trim()) {
-      activeSessionID = sessionID;
       rememberBounded(knownSessionIDs, sessionID);
+      if (isTargetSessionPinned || subagentSessionIDs.has(sessionID)) {
+        return;
+      }
+      activeSessionID = sessionID;
       healthReporter?.update({ openCodeSessionId: sessionID, status: activeSessionStatus });
     }
   }
@@ -135,8 +155,34 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
   }
 
   async function resolveActiveSessionID(): Promise<string | undefined> {
+    const revisionAtStart = sessionEventRevision;
     if (activeSessionID) {
+      if (typeof client?.session?.get === "function") {
+        const sessionResult = await client.session.get({
+          path: { id: activeSessionID },
+          query: { directory },
+        }).catch((error) => {
+          logInject("session.get.error", { activeSessionID, error: formatError(error) });
+          return undefined;
+        });
+        if (sessionEventRevision !== revisionAtStart) {
+          return activeSessionID;
+        }
+        const session = sessionResult?.data;
+        if (session && !session.parentID) {
+          const sessionDir = session.directory?.trim();
+          if (!sessionDir || !directory || !isDifferentDirectory(sessionDir, directory)) {
+            if (session.title?.trim()) {
+              await runtime.setName(session.title.trim());
+            }
+          }
+        }
+      }
       return activeSessionID;
+    }
+
+    if (typeof client?.session?.list !== "function") {
+      return undefined;
     }
 
     const sessionList = await client.session.list({ query: { directory } }).catch((error) => {
@@ -151,7 +197,22 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
       return undefined;
     }
 
-    const latestSession = sessions.reduce((latest, session) => {
+    for (const session of sessions) {
+      if (session.parentID) {
+        rememberBounded(subagentSessionIDs, session.id);
+      }
+    }
+
+    if (sessionEventRevision !== revisionAtStart || activeSessionID !== undefined) {
+      return activeSessionID;
+    }
+
+    const topLevelSessions = sessions.filter((session) => !session.parentID);
+    if (!topLevelSessions.length) {
+      return undefined;
+    }
+
+    const latestSession = topLevelSessions.reduce((latest, session) => {
       if (session.time.created > latest.time.created) {
         return session;
       }
@@ -162,6 +223,9 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
     });
     setActiveSession(latestSession.id);
     logInject("session.resolve", { sessionID: latestSession.id, sessionCount: sessions.length });
+    if (!latestSession.parentID && latestSession.title?.trim()) {
+      await runtime.setName(latestSession.title.trim());
+    }
     return latestSession.id;
   }
 
@@ -377,7 +441,7 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
     }
   }
 
-  runtime = new OpenCodeIntercomRuntime(undefined, directory, injectInbound, undefined, {
+  runtime = pluginOptions?.runtime ?? new OpenCodeIntercomRuntime(undefined, directory, injectInbound, undefined, {
     capturedScopeId,
     onInboundActivity(from) {
       if (!fleetManagementEnabled) return;
@@ -620,18 +684,66 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
     event: async ({ event }) => {
       const properties = (event as { properties?: Record<string, unknown> }).properties;
       if (event.type === "session.created" || event.type === "session.updated") {
-        const info = properties?.info as { id?: unknown } | undefined;
-        setActiveSession(info?.id);
+        const info = properties?.info as {
+          id?: unknown;
+          parentID?: unknown;
+          directory?: unknown;
+          title?: unknown;
+        } | undefined;
+        const id = typeof info?.id === "string" ? info.id.trim() : undefined;
+        if (!id) return;
+
+        const parentID = typeof info?.parentID === "string" ? info.parentID.trim() : undefined;
+        if (parentID) {
+          rememberBounded(subagentSessionIDs, id);
+          rememberBounded(knownSessionIDs, id);
+          return;
+        }
+
+        const infoDir = typeof info?.directory === "string" ? info.directory.trim() : undefined;
+        if (infoDir && directory && isDifferentDirectory(infoDir, directory)) {
+          return;
+        }
+
+        const title = typeof info?.title === "string" ? info.title.trim() : undefined;
+        sessionEventRevision += 1;
+
+        if (event.type === "session.created") {
+          setActiveSession(id);
+          if ((activeSessionID === id || !activeSessionID) && title) {
+            await runtime.setName(title);
+          }
+        } else if (event.type === "session.updated") {
+          if (activeSessionID === undefined) {
+            setActiveSession(id);
+          }
+          if (activeSessionID === id && title) {
+            await runtime.setName(title);
+          }
+        }
       } else {
-        setActiveSession(properties?.sessionID);
+        const sessionID = typeof properties?.sessionID === "string" ? properties.sessionID.trim() : undefined;
+        if (sessionID && !subagentSessionIDs.has(sessionID)) {
+          if (activeSessionID === undefined) {
+            setActiveSession(sessionID);
+          }
+        }
       }
 
       if (event.type === "session.idle") {
+        const sessionID = typeof properties?.sessionID === "string" ? properties.sessionID.trim() : undefined;
+        if (sessionID && sessionID !== activeSessionID) {
+          return;
+        }
         activeSessionStatus = "idle";
         healthReporter.update({ status: "idle", connected: true, error: undefined });
         await runtime.setSummary("idle");
         await flushPendingInjectQueue("session.idle");
       } else if (event.type === "session.status") {
+        const sessionID = typeof properties?.sessionID === "string" ? properties.sessionID.trim() : undefined;
+        if (sessionID && sessionID !== activeSessionID) {
+          return;
+        }
         const status = normalizeOpenCodeSessionStatus(properties?.status);
         activeSessionStatus = status;
         healthReporter.update({ status, connected: true, error: undefined });

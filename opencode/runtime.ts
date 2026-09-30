@@ -218,6 +218,7 @@ export class OpenCodeIntercomRuntime {
   private reconnectTimer: NodeJS.Timeout | null = null;
   private reconnectAttempt = 0;
   private reconnectEnabled = true;
+  private registrationConflict: Error | null = null;
   private identity: OpenCodeRuntimeIdentity;
   private unread: PendingInboundMessage[] = [];
   private unresolvedAsks = new Map<string, PendingInboundMessage>();
@@ -266,7 +267,26 @@ export class OpenCodeIntercomRuntime {
     this.onConnectionState = handler;
   }
 
+  private pauseOnRegistrationConflict(error: unknown): boolean {
+    let cause: unknown = error;
+    for (let depth = 0; cause && depth < 8; depth++) {
+      if (typeof cause === "object" && (cause as { code?: string }).code === "SESSION_ID_IN_USE") {
+        this.registrationConflict = cause instanceof Error ? cause : new Error(String((cause as { message?: string }).message || "SESSION_ID_IN_USE"));
+        this.reconnectEnabled = false;
+        this.clearReconnectTimer();
+        return true;
+      }
+      if (cause instanceof Error) {
+        cause = cause.cause;
+      } else {
+        break;
+      }
+    }
+    return false;
+  }
+
   async connect(): Promise<IntercomClient> {
+    if (this.registrationConflict) throw this.registrationConflict;
     this.reconnectEnabled = true;
     this.clearReconnectTimer();
     if (this.client?.isConnected()) return this.client;
@@ -274,6 +294,9 @@ export class OpenCodeIntercomRuntime {
     this.connectPromise = this.connectOnce();
     try {
       return await this.connectPromise;
+    } catch (error) {
+      this.pauseOnRegistrationConflict(error);
+      throw error;
     } finally {
       this.connectPromise = null;
     }
@@ -284,6 +307,9 @@ export class OpenCodeIntercomRuntime {
     const client = this.clientFactory();
     client.on("message", (from: SessionInfo, message: Message, deliveryId: string) => {
       this.handleIncomingMessage(from, message, deliveryId);
+    });
+    client.on("error", (error: Error) => {
+      this.pauseOnRegistrationConflict(error);
     });
     client.on("disconnected", (error: Error) => {
       for (const waiter of this.replyWaiters.values()) {
@@ -296,16 +322,25 @@ export class OpenCodeIntercomRuntime {
       this.onConnectionState?.(false, error);
       this.scheduleReconnect();
     });
-    await client.connect({
-      name: this.identity.name,
-      cwd: this.identity.cwd,
-      model: this.identity.model,
-      pid: process.pid,
-      startedAt: this.identity.startedAt,
-      lastActivity: Date.now(),
-      status: "idle",
-    }, this.identity.sessionId);
+    const registeredIdentity = { ...this.identity };
+    try {
+      await client.connect({
+        name: registeredIdentity.name,
+        cwd: registeredIdentity.cwd,
+        model: registeredIdentity.model,
+        pid: process.pid,
+        startedAt: registeredIdentity.startedAt,
+        lastActivity: Date.now(),
+        status: "idle",
+      }, registeredIdentity.sessionId);
+    } catch (error) {
+      this.pauseOnRegistrationConflict(error);
+      throw error;
+    }
     this.client = client;
+    if (registeredIdentity.name !== this.identity.name) {
+      client.updatePresence({ name: this.identity.name });
+    }
     this.reconnectAttempt = 0;
     this.onConnectionState?.(true);
     for (const entry of this.inboundStore.pendingInjection()) {
@@ -327,6 +362,10 @@ export class OpenCodeIntercomRuntime {
           this.scheduleReconnect();
         }
       }).catch((error) => {
+        if (this.pauseOnRegistrationConflict(error)) {
+          this.onConnectionState?.(false, error instanceof Error ? error : new Error(String(error)));
+          return;
+        }
         this.reconnectAttempt += 1;
         this.onConnectionState?.(false, error instanceof Error ? error : new Error(String(error)));
         this.scheduleReconnect();
@@ -344,6 +383,7 @@ export class OpenCodeIntercomRuntime {
   async disconnect(): Promise<void> {
     this.reconnectEnabled = false;
     this.clearReconnectTimer();
+    this.registrationConflict = null;
     if (this.connectPromise) {
       try {
         await this.connectPromise;
@@ -364,6 +404,7 @@ export class OpenCodeIntercomRuntime {
     }
     this.reconnectEnabled = false;
     this.clearReconnectTimer();
+    this.registrationConflict = null;
     if (this.connectPromise) {
       try { await this.connectPromise; } catch { /* ignore in-flight connect */ }
     }
@@ -495,6 +536,18 @@ export class OpenCodeIntercomRuntime {
   }
 
   async status(): Promise<ToolResult> {
+    if (this.registrationConflict) {
+      return textResult(
+        `Connected: No\nSession ID: ${this.identity.sessionId}\nRegistration conflict: ${this.registrationConflict.message}\nAutomatic reconnect paused; the incumbent session was not replaced.`,
+        {
+          connected: false,
+          session_id: this.identity.sessionId,
+          registration_conflict: { code: "SESSION_ID_IN_USE", message: this.registrationConflict.message },
+          reconnect_paused: true,
+        },
+        true,
+      );
+    }
     const client = await this.connect();
     const sessions = await client.listSessions();
     return textResult(
@@ -530,6 +583,21 @@ export class OpenCodeIntercomRuntime {
     const client = await this.connect();
     const sessions = await client.listSessions();
     return includeSelf ? sessions : sessions.filter((session) => session.id !== client.sessionId);
+  }
+
+  async setName(name: string): Promise<ToolResult> {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return textResult("Session name cannot be empty.", { ok: false }, true);
+    }
+    if (this.identity.name === trimmed) {
+      return textResult("Name unchanged.", { ok: true, name: trimmed });
+    }
+    this.identity = { ...this.identity, name: trimmed };
+    if (this.client?.isConnected()) {
+      this.client.updatePresence({ name: trimmed });
+    }
+    return textResult("Name updated.", { ok: true, name: trimmed });
   }
 
   async setSummary(summary: string): Promise<ToolResult> {

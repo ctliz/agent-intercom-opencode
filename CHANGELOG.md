@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.12.2 - 2026-09-07
+
+- Sync native session titles from initial or resumed OpenCode SDK sessions and `session.created`/`session.updated` events into Intercom presence.
+- Preserve stable identity `sessionId` and remembered display name across reconnects; reject empty or whitespace title overwrites.
+- Isolate subagent and unrelated sessions: subagent sessions (`info.parentID`) and sessions from foreign directories cannot hijack active session selection, session status, or presence titles.
+- Expose `setName` on `OpenCodeIntercomRuntime` to update presence and remembered name.
+- Align `SESSION_ID_IN_USE` pause-on-conflict behavior with Claude and Pi: pause automatic reconnect when another live runtime owns the session ID and expose structured conflict details in `intercom_status`.
+
 ## 0.12.1 - 2026-09-06
 
 - Stable release of named teams without tmux. `intercom_join`, `/intercom-create`, and `/intercom-join` work outside TmuxDeck.

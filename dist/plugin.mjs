@@ -6,6 +6,7 @@ var __export = (target, all) => {
 
 // opencode/plugin.ts
 import { appendFileSync } from "fs";
+import { resolve as resolve3 } from "node:path";
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -13118,7 +13119,7 @@ var IntercomClient = class extends EventEmitter {
     if (this.socket) {
       return Promise.reject(new Error("Already connected"));
     }
-    return new Promise((resolve3, reject) => {
+    return new Promise((resolve4, reject) => {
       let socket;
       let target;
       try {
@@ -13148,7 +13149,7 @@ var IntercomClient = class extends EventEmitter {
         settled = true;
         connectionEstablished = true;
         cleanupConnectionAttempt();
-        resolve3();
+        resolve4();
       };
       const onError = (err) => {
         settled = true;
@@ -13502,7 +13503,7 @@ var IntercomClient = class extends EventEmitter {
     this.disconnectError = null;
     this.failPending(new Error("Client disconnected"));
     if (!preserveAsks) this.outbox?.clear();
-    await new Promise((resolve3) => {
+    await new Promise((resolve4) => {
       let settled = false;
       const finish = () => {
         if (settled) {
@@ -13512,7 +13513,7 @@ var IntercomClient = class extends EventEmitter {
         clearTimeout(timeout);
         socket.off("close", onClose);
         socket.off("error", onError);
-        resolve3();
+        resolve4();
       };
       const onClose = () => finish();
       const onError = () => {
@@ -13538,11 +13539,11 @@ var IntercomClient = class extends EventEmitter {
     } catch (error45) {
       return Promise.reject(toError(error45));
     }
-    return new Promise((resolve3, reject) => {
+    return new Promise((resolve4, reject) => {
       const requestId = randomUUID2();
       const wrappedResolve = (sessions) => {
         clearTimeout(timeout);
-        resolve3(sessions);
+        resolve4(sessions);
       };
       const wrappedReject = (error45) => {
         clearTimeout(timeout);
@@ -13596,10 +13597,10 @@ var IntercomClient = class extends EventEmitter {
     } catch (error45) {
       return Promise.reject(toError(error45));
     }
-    return new Promise((resolve3, reject) => {
+    return new Promise((resolve4, reject) => {
       const wrappedResolve = (result) => {
         clearTimeout(timeout);
-        resolve3(result);
+        resolve4(result);
       };
       const wrappedReject = (error45) => {
         clearTimeout(timeout);
@@ -13647,14 +13648,14 @@ var IntercomClient = class extends EventEmitter {
         reason: `Boss control message ID ${envelope.messageId} is already pending`
       });
     }
-    return new Promise((resolve3, reject) => {
+    return new Promise((resolve4, reject) => {
       const timeout = setTimeout(() => {
         if (!this.pendingBossControls.delete(envelope.messageId)) return;
         reject(new Error("Boss control send timeout"));
       }, 1e4);
       const wrappedResolve = (result) => {
         clearTimeout(timeout);
-        resolve3(result);
+        resolve4(result);
       };
       const wrappedReject = (error45) => {
         clearTimeout(timeout);
@@ -13686,17 +13687,17 @@ var IntercomClient = class extends EventEmitter {
   }
   sendAskControl(action, messageId) {
     const requestId = randomUUID2();
-    return new Promise((resolve3) => {
+    return new Promise((resolve4) => {
       const timeout = setTimeout(() => {
         this.pendingAskControls.delete(requestId);
-        resolve3(false);
+        resolve4(false);
       }, 2e3);
       timeout.unref?.();
-      this.pendingAskControls.set(requestId, { resolve: resolve3, timeout });
+      this.pendingAskControls.set(requestId, { resolve: resolve4, timeout });
       if (!this.writeControlMessage({ type: action === "defer" ? "defer_ask" : "cancel_ask", requestId, messageId })) {
         clearTimeout(timeout);
         this.pendingAskControls.delete(requestId);
-        resolve3(false);
+        resolve4(false);
       }
     });
   }
@@ -13756,7 +13757,7 @@ var EXTENSION_DIR = join3(dirname2(fileURLToPath(import.meta.url)), "..");
 var BROKER_PID = join3(INTERCOM_DIR, "broker.pid");
 var BROKER_SPAWN_LOCK = join3(INTERCOM_DIR, "broker.spawn.lock");
 function sleep(ms) {
-  return new Promise((resolve3) => setTimeout(resolve3, ms));
+  return new Promise((resolve4) => setTimeout(resolve4, ms));
 }
 function getTsxCliPath(extensionDir = EXTENSION_DIR) {
   try {
@@ -13899,7 +13900,7 @@ async function spawnBrokerIfNeeded(brokerCommand, brokerArgs) {
     }
     const child = spawn(launch.command, launch.args, getBrokerSpawnOptions());
     child.unref();
-    await new Promise((resolve3, reject) => {
+    await new Promise((resolve4, reject) => {
       const cleanup = () => {
         child.off("error", onError);
         child.off("exit", onExit);
@@ -13923,7 +13924,7 @@ async function spawnBrokerIfNeeded(brokerCommand, brokerArgs) {
       child.once("exit", onExit);
       waitForBroker().then(() => {
         cleanup();
-        resolve3();
+        resolve4();
       }, (error45) => {
         cleanup();
         reject(toError2(error45));
@@ -13979,12 +13980,12 @@ async function checkSocketConnectable() {
   return await checkBrokerHealth() === "compatible";
 }
 function checkBrokerHealth() {
-  return new Promise((resolve3) => {
+  return new Promise((resolve4) => {
     let target;
     try {
       target = getBrokerConnectTarget();
     } catch {
-      resolve3("unreachable");
+      resolve4("unreachable");
       return;
     }
     const socket = connectToBrokerTarget2(target);
@@ -14001,7 +14002,7 @@ function checkBrokerHealth() {
       socket.off("error", onError);
       socket.off("data", reader);
       socket.destroy();
-      resolve3(health);
+      resolve4(health);
     };
     const onConnect = () => {
       try {
@@ -14428,6 +14429,148 @@ function formatIntercomTeam(team) {
   return lines.join("\n");
 }
 
+// opencode/named-teams.ts
+import { randomBytes } from "node:crypto";
+import { readFileSync as readFileSync7 } from "node:fs";
+import { join as join7 } from "node:path";
+var NAMED_TEAMS_FILE = "named-teams.json";
+var NAMED_TEAMS_VERSION = 1;
+var NAMED_TEAM_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/;
+function isNamedTeamScope(value) {
+  if (value.length !== 48) return false;
+  for (const char of value) {
+    if (!(char >= "0" && char <= "9" || char >= "a" && char <= "f")) return false;
+  }
+  return true;
+}
+function teamsFilePath(agentDir) {
+  return join7(getIntercomDirPath(agentDir ?? getAgentDirPath()), NAMED_TEAMS_FILE);
+}
+function genericReadError() {
+  return new Error("Could not read the local named-team list.");
+}
+function genericWriteError() {
+  return new Error("Could not create that named team.");
+}
+function isPlainObject2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function parseStoredTeam(value) {
+  if (!isPlainObject2(value)) return void 0;
+  if (typeof value.name !== "string" || !NAMED_TEAM_NAME_PATTERN.test(value.name)) return void 0;
+  if (typeof value.scopeId !== "string" || !isNamedTeamScope(value.scopeId)) return void 0;
+  if (typeof value.managerSessionId !== "string" || !value.managerSessionId.trim()) return void 0;
+  if (value.managerSessionId !== value.managerSessionId.trim() || /[\u0000-\u001f\u007f]/.test(value.managerSessionId)) {
+    return void 0;
+  }
+  if (typeof value.createdAt !== "number" || !Number.isSafeInteger(value.createdAt) || value.createdAt <= 0) {
+    return void 0;
+  }
+  return {
+    name: value.name,
+    scopeId: value.scopeId,
+    managerSessionId: value.managerSessionId,
+    createdAt: value.createdAt
+  };
+}
+function rejectManagedJoin(env = process.env) {
+  if (env.AGENT_INTERCOM_WORKER_ID?.trim() || env.AGENT_INTERCOM_OWNED === "1" || env.AGENT_INTERCOM_TEAM_MANIFEST?.trim()) {
+    return "This session is already a managed member and cannot join another team.";
+  }
+  return void 0;
+}
+function parseTeamName(raw) {
+  const name = raw.trim();
+  if (!name || name.includes(" ") || !NAMED_TEAM_NAME_PATTERN.test(name)) {
+    throw new Error("Team names start with a letter and may include letters, numbers, hyphens, or underscores (max 32).");
+  }
+  return name;
+}
+function generateNamedTeamScope(existing = []) {
+  const taken = new Set(existing);
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const scopeId = randomBytes(24).toString("hex");
+    if (!taken.has(scopeId)) return scopeId;
+  }
+  throw genericWriteError();
+}
+function listNamedTeams(agentDir) {
+  let raw;
+  try {
+    raw = readFileSync7(teamsFilePath(agentDir), "utf8");
+  } catch (error45) {
+    if (error45 && typeof error45 === "object" && "code" in error45 && error45.code === "ENOENT") return [];
+    throw genericReadError();
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw genericReadError();
+  }
+  if (!isPlainObject2(parsed) || parsed.version !== NAMED_TEAMS_VERSION || !Array.isArray(parsed.teams)) {
+    throw genericReadError();
+  }
+  const teams = [];
+  const names = /* @__PURE__ */ new Set();
+  const scopes = /* @__PURE__ */ new Set();
+  for (const entry of parsed.teams) {
+    const team = parseStoredTeam(entry);
+    if (!team || names.has(team.name) || scopes.has(team.scopeId)) throw genericReadError();
+    names.add(team.name);
+    scopes.add(team.scopeId);
+    teams.push(team);
+  }
+  return teams;
+}
+function findNamedTeam(name, agentDir) {
+  return listNamedTeams(agentDir).find((team) => team.name === name);
+}
+function createNamedTeam(input) {
+  const name = parseTeamName(input.name);
+  const managerSessionId = input.managerSessionId.trim();
+  if (!managerSessionId || managerSessionId !== input.managerSessionId || /[\u0000-\u001f\u007f]/.test(managerSessionId)) {
+    throw genericWriteError();
+  }
+  const existing = listNamedTeams(input.agentDir);
+  if (existing.some((team2) => team2.name === name)) {
+    throw new Error(`A named team called ${name} already exists.`);
+  }
+  const scopeId = (input.generateScope ?? (() => generateNamedTeamScope(existing.map((team2) => team2.scopeId))))();
+  if (!isNamedTeamScope(scopeId) || existing.some((team2) => team2.scopeId === scopeId)) {
+    throw genericWriteError();
+  }
+  const team = {
+    name,
+    scopeId,
+    managerSessionId,
+    createdAt: input.now ?? Date.now()
+  };
+  const dir = getIntercomDirPath(input.agentDir ?? getAgentDirPath());
+  ensureIntercomRuntimeDir(dir);
+  const payload = { version: NAMED_TEAMS_VERSION, teams: [...existing, team] };
+  writeDurableJson(teamsFilePath(input.agentDir), payload);
+  return team;
+}
+function formatJoinableNamedTeamList(teams) {
+  if (teams.length === 0) {
+    return 'No joinable named teams found.\nCreate one with intercom_join({ name: "billing", create: true }).';
+  }
+  return [
+    "Joinable named teams:",
+    ...teams.map((team, index) => `  ${index + 1}) ${team.name}`)
+  ].join("\n");
+}
+function formatCreateSuccess(input) {
+  return `Created team ${input.team} and joined as manager.
+Display name: ${input.name}`;
+}
+function formatNamedJoinSuccess(input) {
+  return `Joined team ${input.team}.
+Role: teammate
+Display name: ${input.name}`;
+}
+
 // opencode/runtime.ts
 function matchesPendingSender(entry, to) {
   return entry.from.id === to || entry.from.name?.toLowerCase() === to.toLowerCase() || entry.from.id.startsWith(to);
@@ -14577,6 +14720,7 @@ var OpenCodeIntercomRuntime = class {
   reconnectTimer = null;
   reconnectAttempt = 0;
   reconnectEnabled = true;
+  registrationConflict = null;
   identity;
   unread = [];
   unresolvedAsks = /* @__PURE__ */ new Map();
@@ -14593,8 +14737,9 @@ var OpenCodeIntercomRuntime = class {
     this.identity = identity ?? buildOpenCodeRuntimeIdentity(process.env, cwd);
     this.onInboundMessage = onInboundMessage;
     this.capturedScopeId = options.capturedScopeId !== void 0 ? options.capturedScopeId : intercomScopeIdFromEnv(process.env);
-    const scopeSnapshot = this.capturedScopeId ? { AGENT_INTERCOM_SCOPE_ID: this.capturedScopeId } : {};
-    this.clientFactory = options.clientFactory ?? (() => new IntercomClient({ env: scopeSnapshot }));
+    this.clientFactory = options.clientFactory ?? (() => new IntercomClient({
+      env: this.capturedScopeId ? { AGENT_INTERCOM_SCOPE_ID: this.capturedScopeId } : {}
+    }));
     this.prepareConnection = options.prepareConnection ?? (async () => {
       const config2 = loadConfig();
       if (!config2.enabled) throw new Error("Intercom disabled");
@@ -14614,7 +14759,25 @@ var OpenCodeIntercomRuntime = class {
   setConnectionStateHandler(handler) {
     this.onConnectionState = handler;
   }
+  pauseOnRegistrationConflict(error45) {
+    let cause = error45;
+    for (let depth = 0; cause && depth < 8; depth++) {
+      if (typeof cause === "object" && cause.code === "SESSION_ID_IN_USE") {
+        this.registrationConflict = cause instanceof Error ? cause : new Error(String(cause.message || "SESSION_ID_IN_USE"));
+        this.reconnectEnabled = false;
+        this.clearReconnectTimer();
+        return true;
+      }
+      if (cause instanceof Error) {
+        cause = cause.cause;
+      } else {
+        break;
+      }
+    }
+    return false;
+  }
   async connect() {
+    if (this.registrationConflict) throw this.registrationConflict;
     this.reconnectEnabled = true;
     this.clearReconnectTimer();
     if (this.client?.isConnected()) return this.client;
@@ -14622,6 +14785,9 @@ var OpenCodeIntercomRuntime = class {
     this.connectPromise = this.connectOnce();
     try {
       return await this.connectPromise;
+    } catch (error45) {
+      this.pauseOnRegistrationConflict(error45);
+      throw error45;
     } finally {
       this.connectPromise = null;
     }
@@ -14631,6 +14797,9 @@ var OpenCodeIntercomRuntime = class {
     const client = this.clientFactory();
     client.on("message", (from, message, deliveryId) => {
       this.handleIncomingMessage(from, message, deliveryId);
+    });
+    client.on("error", (error45) => {
+      this.pauseOnRegistrationConflict(error45);
     });
     client.on("disconnected", (error45) => {
       for (const waiter of this.replyWaiters.values()) {
@@ -14643,16 +14812,25 @@ var OpenCodeIntercomRuntime = class {
       this.onConnectionState?.(false, error45);
       this.scheduleReconnect();
     });
-    await client.connect({
-      name: this.identity.name,
-      cwd: this.identity.cwd,
-      model: this.identity.model,
-      pid: process.pid,
-      startedAt: this.identity.startedAt,
-      lastActivity: Date.now(),
-      status: "idle"
-    }, this.identity.sessionId);
+    const registeredIdentity = { ...this.identity };
+    try {
+      await client.connect({
+        name: registeredIdentity.name,
+        cwd: registeredIdentity.cwd,
+        model: registeredIdentity.model,
+        pid: process.pid,
+        startedAt: registeredIdentity.startedAt,
+        lastActivity: Date.now(),
+        status: "idle"
+      }, registeredIdentity.sessionId);
+    } catch (error45) {
+      this.pauseOnRegistrationConflict(error45);
+      throw error45;
+    }
     this.client = client;
+    if (registeredIdentity.name !== this.identity.name) {
+      client.updatePresence({ name: this.identity.name });
+    }
     this.reconnectAttempt = 0;
     this.onConnectionState?.(true);
     for (const entry of this.inboundStore.pendingInjection()) {
@@ -14673,6 +14851,10 @@ var OpenCodeIntercomRuntime = class {
           this.scheduleReconnect();
         }
       }).catch((error45) => {
+        if (this.pauseOnRegistrationConflict(error45)) {
+          this.onConnectionState?.(false, error45 instanceof Error ? error45 : new Error(String(error45)));
+          return;
+        }
         this.reconnectAttempt += 1;
         this.onConnectionState?.(false, error45 instanceof Error ? error45 : new Error(String(error45)));
         this.scheduleReconnect();
@@ -14688,6 +14870,7 @@ var OpenCodeIntercomRuntime = class {
   async disconnect() {
     this.reconnectEnabled = false;
     this.clearReconnectTimer();
+    this.registrationConflict = null;
     if (this.connectPromise) {
       try {
         await this.connectPromise;
@@ -14697,6 +14880,52 @@ var OpenCodeIntercomRuntime = class {
     const client = this.client;
     this.client = null;
     if (client) await client.disconnect();
+  }
+  async switchRuntimeScope(nextScopeId, managerSessionId) {
+    if (managerSessionId) process.env.AGENT_INTERCOM_MANAGER_TARGET = managerSessionId;
+    else delete process.env.AGENT_INTERCOM_MANAGER_TARGET;
+    if (this.capturedScopeId === nextScopeId && process.env.AGENT_INTERCOM_SCOPE_ID === nextScopeId) {
+      return;
+    }
+    this.reconnectEnabled = false;
+    this.clearReconnectTimer();
+    this.registrationConflict = null;
+    if (this.connectPromise) {
+      try {
+        await this.connectPromise;
+      } catch {
+      }
+    }
+    const previous = this.client;
+    this.client = null;
+    if (previous) await previous.disconnect().catch(() => void 0);
+    this.capturedScopeId = nextScopeId;
+    process.env.AGENT_INTERCOM_SCOPE_ID = nextScopeId;
+    this.reconnectEnabled = true;
+    await this.connect();
+  }
+  async join(name, create = false) {
+    const blocked = rejectManagedJoin();
+    if (blocked) return textResult(blocked, { ok: false }, true);
+    try {
+      if (create) {
+        if (typeof name !== "string" || !name.trim()) {
+          return textResult("Creating a team requires a name.", { ok: false }, true);
+        }
+        const team2 = createNamedTeam({ name: parseTeamName(name), managerSessionId: this.identity.sessionId });
+        await this.switchRuntimeScope(team2.scopeId, team2.managerSessionId);
+        return textResult(formatCreateSuccess({ team: team2.name, name: this.identity.name }), { ok: true, team: team2.name, role: "manager" });
+      }
+      if (!name?.trim()) {
+        return textResult(formatJoinableNamedTeamList(listNamedTeams()));
+      }
+      const team = findNamedTeam(parseTeamName(name));
+      if (!team) return textResult("Could not join that team.", { ok: false }, true);
+      await this.switchRuntimeScope(team.scopeId, team.managerSessionId);
+      return textResult(formatNamedJoinSuccess({ team: team.name, name: this.identity.name }), { ok: true, team: team.name, role: "teammate" });
+    } catch (error45) {
+      return textResult(error45 instanceof Error ? error45.message : String(error45), { ok: false }, true);
+    }
   }
   handleIncomingMessage(from, message, deliveryId) {
     const waiter = this.replyWaiters.get(message.replyTo ?? "");
@@ -14737,7 +14966,7 @@ var OpenCodeIntercomRuntime = class {
     this.unresolvedAsks.delete(messageId);
   }
   waitForReply(from, replyTo, timeoutMs = getAskTimeoutMs(), signal) {
-    return new Promise((resolve3, reject) => {
+    return new Promise((resolve4, reject) => {
       if (signal?.aborted) {
         reject(new Error("intercom_ask cancelled"));
         return;
@@ -14760,7 +14989,7 @@ var OpenCodeIntercomRuntime = class {
         reject(new Error(`No reply from "${from}" within ${Math.round(timeoutMs / 1e3)} seconds`));
       }, timeoutMs);
       signal?.addEventListener("abort", onAbort, { once: true });
-      this.replyWaiters.set(replyTo, { from, replyTo, resolve: resolve3, reject, timeout, cleanup });
+      this.replyWaiters.set(replyTo, { from, replyTo, resolve: resolve4, reject, timeout, cleanup });
     });
   }
   async resolveTarget(to) {
@@ -14785,6 +15014,21 @@ cwd: ${this.identity.cwd}`,
     return textResult(formatIntercomTeam(team), team);
   }
   async status() {
+    if (this.registrationConflict) {
+      return textResult(
+        `Connected: No
+Session ID: ${this.identity.sessionId}
+Registration conflict: ${this.registrationConflict.message}
+Automatic reconnect paused; the incumbent session was not replaced.`,
+        {
+          connected: false,
+          session_id: this.identity.sessionId,
+          registration_conflict: { code: "SESSION_ID_IN_USE", message: this.registrationConflict.message },
+          reconnect_paused: true
+        },
+        true
+      );
+    }
     const client = await this.connect();
     const sessions = await client.listSessions();
     return textResult(
@@ -14820,6 +15064,20 @@ Pending asks: ${this.unresolvedAsks.size}`,
     const client = await this.connect();
     const sessions = await client.listSessions();
     return includeSelf ? sessions : sessions.filter((session) => session.id !== client.sessionId);
+  }
+  async setName(name) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return textResult("Session name cannot be empty.", { ok: false }, true);
+    }
+    if (this.identity.name === trimmed) {
+      return textResult("Name unchanged.", { ok: true, name: trimmed });
+    }
+    this.identity = { ...this.identity, name: trimmed };
+    if (this.client?.isConnected()) {
+      this.client.updatePresence({ name: trimmed });
+    }
+    return textResult("Name updated.", { ok: true, name: trimmed });
   }
   async setSummary(summary) {
     const client = await this.connect();
@@ -14961,7 +15219,7 @@ function isFleetManagementEnabled(env = process.env) {
 async function invokeAgentFleet(params, context, env = process.env) {
   const command = env.AGENT_INTERCOM_FLEET_COMMAND?.trim() || "agent-intercom-fleet";
   const timeoutMs = Number(env.AGENT_INTERCOM_FLEET_TIMEOUT_MS || 12e4);
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve4, reject) => {
     const child = spawn2(command, [], {
       cwd: context.cwd,
       env,
@@ -14977,7 +15235,7 @@ async function invokeAgentFleet(params, context, env = process.env) {
       settled = true;
       if (timer) clearTimeout(timer);
       if (error45) reject(error45);
-      else resolve3(value);
+      else resolve4(value);
     };
     child.stdout.on("data", (chunk) => {
       stdout += chunk;
@@ -15011,11 +15269,11 @@ async function invokeAgentFleet(params, context, env = process.env) {
 
 // opencode/control.ts
 import { randomUUID as randomUUID5 } from "node:crypto";
-import { mkdirSync as mkdirSync4, readFileSync as readFileSync7, readdirSync, renameSync as renameSync3, rmSync, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join7 } from "node:path";
+import { mkdirSync as mkdirSync4, readFileSync as readFileSync8, readdirSync, renameSync as renameSync3, rmSync, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join8 } from "node:path";
 var CONTROL_DIR_NAME = "opencode-control";
 function controlDir() {
-  const directory = join7(getIntercomDirPath(), CONTROL_DIR_NAME);
+  const directory = join8(getIntercomDirPath(), CONTROL_DIR_NAME);
   mkdirSync4(directory, { recursive: true, mode: 448 });
   return directory;
 }
@@ -15041,15 +15299,15 @@ function startOpenCodeControlServer(options) {
     try {
       const files = readdirSync(directory).filter((file2) => file2.endsWith(".request.json"));
       for (const file2 of files) {
-        const requestPath = join7(directory, file2);
+        const requestPath = join8(directory, file2);
         let request;
         try {
-          request = JSON.parse(readFileSync7(requestPath, "utf8"));
+          request = JSON.parse(readFileSync8(requestPath, "utf8"));
         } catch {
           continue;
         }
         if (!request?.id || !request.sessionId || !options.acceptsSession(request.sessionId)) continue;
-        const responsePath = join7(directory, responseName(request.sessionId, request.id));
+        const responsePath = join8(directory, responseName(request.sessionId, request.id));
         let response;
         try {
           response = { ok: true, value: await options.handle(request.action) };
@@ -15093,11 +15351,22 @@ function listScope(value) {
   if (value === "machine" || value === "directory" || value === "repo") return value;
   throw new Error('scope must be one of "machine", "directory", or "repo"');
 }
-var OpenCodeIntercomPlugin = async ({ client, directory, serverUrl }) => {
+function isDifferentDirectory(dir1, dir2) {
+  try {
+    return resolve3(dir1) !== resolve3(dir2);
+  } catch {
+    return false;
+  }
+}
+var OpenCodeIntercomPlugin = async ({ client, directory, serverUrl }, pluginOptions) => {
   const capturedScopeId = intercomScopeIdFromEnv(process.env);
-  let activeSessionID = process.env.OPENCODE_INTERCOM_TARGET_SESSION?.trim() || process.env.OPENCODE_SESSION_ID?.trim() || void 0;
+  const pinnedSessionID = process.env.OPENCODE_INTERCOM_TARGET_SESSION?.trim() || process.env.OPENCODE_SESSION_ID?.trim() || void 0;
+  let activeSessionID = pinnedSessionID;
+  const isTargetSessionPinned = Boolean(pinnedSessionID);
   let activeSessionStatus = "idle";
+  let sessionEventRevision = 0;
   const knownSessionIDs = /* @__PURE__ */ new Set();
+  const subagentSessionIDs = /* @__PURE__ */ new Set();
   let flushingInjectQueue = false;
   const pendingInjectQueue = [];
   const deliveredMessageIDs = /* @__PURE__ */ new Set();
@@ -15150,8 +15419,11 @@ var OpenCodeIntercomPlugin = async ({ client, directory, serverUrl }) => {
   }
   function setActiveSession(sessionID) {
     if (typeof sessionID === "string" && sessionID.trim()) {
-      activeSessionID = sessionID;
       rememberBounded(knownSessionIDs, sessionID);
+      if (isTargetSessionPinned || subagentSessionIDs.has(sessionID)) {
+        return;
+      }
+      activeSessionID = sessionID;
       healthReporter?.update({ openCodeSessionId: sessionID, status: activeSessionStatus });
     }
   }
@@ -15170,8 +15442,33 @@ var OpenCodeIntercomPlugin = async ({ client, directory, serverUrl }) => {
     ].join("\n");
   }
   async function resolveActiveSessionID() {
+    const revisionAtStart = sessionEventRevision;
     if (activeSessionID) {
+      if (typeof client?.session?.get === "function") {
+        const sessionResult = await client.session.get({
+          path: { id: activeSessionID },
+          query: { directory }
+        }).catch((error45) => {
+          logInject("session.get.error", { activeSessionID, error: formatError2(error45) });
+          return void 0;
+        });
+        if (sessionEventRevision !== revisionAtStart) {
+          return activeSessionID;
+        }
+        const session = sessionResult?.data;
+        if (session && !session.parentID) {
+          const sessionDir = session.directory?.trim();
+          if (!sessionDir || !directory || !isDifferentDirectory(sessionDir, directory)) {
+            if (session.title?.trim()) {
+              await runtime.setName(session.title.trim());
+            }
+          }
+        }
+      }
       return activeSessionID;
+    }
+    if (typeof client?.session?.list !== "function") {
+      return void 0;
     }
     const sessionList = await client.session.list({ query: { directory } }).catch((error45) => {
       logInject("session.list.error", { error: formatError2(error45) });
@@ -15184,7 +15481,19 @@ var OpenCodeIntercomPlugin = async ({ client, directory, serverUrl }) => {
     if (!sessions?.length) {
       return void 0;
     }
-    const latestSession = sessions.reduce((latest, session) => {
+    for (const session of sessions) {
+      if (session.parentID) {
+        rememberBounded(subagentSessionIDs, session.id);
+      }
+    }
+    if (sessionEventRevision !== revisionAtStart || activeSessionID !== void 0) {
+      return activeSessionID;
+    }
+    const topLevelSessions = sessions.filter((session) => !session.parentID);
+    if (!topLevelSessions.length) {
+      return void 0;
+    }
+    const latestSession = topLevelSessions.reduce((latest, session) => {
       if (session.time.created > latest.time.created) {
         return session;
       }
@@ -15195,6 +15504,9 @@ var OpenCodeIntercomPlugin = async ({ client, directory, serverUrl }) => {
     });
     setActiveSession(latestSession.id);
     logInject("session.resolve", { sessionID: latestSession.id, sessionCount: sessions.length });
+    if (!latestSession.parentID && latestSession.title?.trim()) {
+      await runtime.setName(latestSession.title.trim());
+    }
     return latestSession.id;
   }
   function enqueuePendingInject(entry, reason) {
@@ -15392,7 +15704,7 @@ var OpenCodeIntercomPlugin = async ({ client, directory, serverUrl }) => {
       enqueuePendingInject(entry, "prompt_async_throw");
     }
   }
-  runtime = new OpenCodeIntercomRuntime(void 0, directory, injectInbound, void 0, {
+  runtime = pluginOptions?.runtime ?? new OpenCodeIntercomRuntime(void 0, directory, injectInbound, void 0, {
     capturedScopeId,
     onInboundActivity(from) {
       if (!fleetManagementEnabled) return;
@@ -15468,6 +15780,11 @@ var OpenCodeIntercomPlugin = async ({ client, directory, serverUrl }) => {
         if (result.isError) throw new Error(result.content.map((part) => part.text).join("\n"));
         return result.structuredContent ?? { ok: true };
       }
+      if (action.type === "join") {
+        const result = await runtime.join(action.name, action.create === true);
+        if (result.isError) throw new Error(result.content.map((part) => part.text).join("\n"));
+        return { text: result.content.map((part) => part.text).join("\n") };
+      }
       throw new Error("Unsupported OpenCode intercom action.");
     }
   });
@@ -15524,6 +15841,17 @@ var OpenCodeIntercomPlugin = async ({ client, directory, serverUrl }) => {
         async execute(_args, context) {
           setActiveSession(context.sessionID);
           return resultText(await runtime.team());
+        }
+      }),
+      intercom_join: tool({
+        description: "List, join, or create a named intercom team without tmux. Omit name to list joinable teams. Set create=true to create a team and join as manager.",
+        args: {
+          name: tool.schema.string().optional().describe("Team name to join. Omit to list joinable teams."),
+          create: tool.schema.boolean().optional().describe("Create this named team and join as manager. Requires name.")
+        },
+        async execute(args, context) {
+          setActiveSession(context.sessionID);
+          return resultText(await runtime.join(args.name, args.create === true));
         }
       }),
       intercom_status: tool({
@@ -15606,16 +15934,55 @@ var OpenCodeIntercomPlugin = async ({ client, directory, serverUrl }) => {
       const properties = event.properties;
       if (event.type === "session.created" || event.type === "session.updated") {
         const info = properties?.info;
-        setActiveSession(info?.id);
+        const id = typeof info?.id === "string" ? info.id.trim() : void 0;
+        if (!id) return;
+        const parentID = typeof info?.parentID === "string" ? info.parentID.trim() : void 0;
+        if (parentID) {
+          rememberBounded(subagentSessionIDs, id);
+          rememberBounded(knownSessionIDs, id);
+          return;
+        }
+        const infoDir = typeof info?.directory === "string" ? info.directory.trim() : void 0;
+        if (infoDir && directory && isDifferentDirectory(infoDir, directory)) {
+          return;
+        }
+        const title = typeof info?.title === "string" ? info.title.trim() : void 0;
+        sessionEventRevision += 1;
+        if (event.type === "session.created") {
+          setActiveSession(id);
+          if ((activeSessionID === id || !activeSessionID) && title) {
+            await runtime.setName(title);
+          }
+        } else if (event.type === "session.updated") {
+          if (activeSessionID === void 0) {
+            setActiveSession(id);
+          }
+          if (activeSessionID === id && title) {
+            await runtime.setName(title);
+          }
+        }
       } else {
-        setActiveSession(properties?.sessionID);
+        const sessionID = typeof properties?.sessionID === "string" ? properties.sessionID.trim() : void 0;
+        if (sessionID && !subagentSessionIDs.has(sessionID)) {
+          if (activeSessionID === void 0) {
+            setActiveSession(sessionID);
+          }
+        }
       }
       if (event.type === "session.idle") {
+        const sessionID = typeof properties?.sessionID === "string" ? properties.sessionID.trim() : void 0;
+        if (sessionID && sessionID !== activeSessionID) {
+          return;
+        }
         activeSessionStatus = "idle";
         healthReporter.update({ status: "idle", connected: true, error: void 0 });
         await runtime.setSummary("idle");
         await flushPendingInjectQueue("session.idle");
       } else if (event.type === "session.status") {
+        const sessionID = typeof properties?.sessionID === "string" ? properties.sessionID.trim() : void 0;
+        if (sessionID && sessionID !== activeSessionID) {
+          return;
+        }
         const status = normalizeOpenCodeSessionStatus(properties?.status);
         activeSessionStatus = status;
         healthReporter.update({ status, connected: true, error: void 0 });
