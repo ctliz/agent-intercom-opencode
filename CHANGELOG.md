@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.13.0 - 2026-10-02
+
+- Add additive task teams shared with Pi, Claude, and Codex; managers can add connected peers and task descriptions in one call without changing registration scopes.
+- Expose task teams and exact reply contexts in tools and inbound prompts; replies inherit the original team and mixed-task implicit replies fail closed.
+- Inject one-time team-approval guidance into system prompts and retain ungrouped initial contact across unrelated memberships.
+
 ## 0.12.2 - 2026-09-07
 
 - Sync native session titles from initial or resumed OpenCode SDK sessions and `session.created`/`session.updated` events into Intercom presence.

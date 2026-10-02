@@ -7,6 +7,8 @@ import { normalizeOpenCodeSessionStatus, OpenCodePeerHealthReporter } from "./he
 import { invokeAgentFleet, isFleetManagementEnabled } from "./fleet.ts";
 import { startOpenCodeControlServer } from "./control.ts";
 import { validateAskTimeoutMs } from "../config.ts";
+import { contextId, replyHint } from "./reply-context.ts";
+import { TASK_TEAM_GUIDANCE } from "./team-guidance.ts";
 
 // Public, bundled contract surface. Production creation intentionally fails
 // closed until the protected authority client and typed notice ingress exist.
@@ -142,14 +144,12 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
 
   function formatInboundPrompt(entry: PendingInboundMessage): string {
     const from = formatSessionDisplay(entry.from);
-    const replyHint = entry.message.expectsReply
-      ? "\n\nThis message expects a reply. Use intercom_reply with only your reply text while this turn is active. If you reply later, use intercom_pending plus the sender and oldest/latest selector."
-      : "";
+    const hint = `\n\nReply with intercom_reply({ contextId: "${contextId(entry)}", message: "..." }). The reply inherits this message's team; do not mix other task contexts.`;
     return [
-      `Incoming intercom message from ${from} (${entry.from.model}, ${entry.from.cwd}):`,
+      `Incoming intercom message from ${from}${replyHint(entry)} (${entry.from.model}, ${entry.from.cwd}):`,
       "",
       entry.message.content.text + formatAttachments(entry.message.content.attachments),
-      replyHint,
+      hint,
       messageMarker(entry.message.id),
     ].join("\n");
   }
@@ -576,23 +576,25 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
       }),
 
       intercom_team: tool({
-        description: "Show your current manager and the live coworkers owned by that manager. No arguments are required.",
-        args: {},
-        async execute(_args, context) {
+        description: "Show all your named task teams, or inspect one by name. Falls back to managed-team discovery.",
+        args: { team: tool.schema.string().optional().describe("Task team to inspect.") },
+        async execute(args, context) {
           setActiveSession(context.sessionID);
-          return resultText(await runtime.team());
+          return resultText(await runtime.team(args.team));
         },
       }),
 
       intercom_join: tool({
-        description: "List, join, or create a named intercom team without tmux. Omit name to list joinable teams. Set create=true to create a team and join as manager.",
+        description: "After user approval, create or join a task team. Membership is additive; members lets the manager add connected peers in one call. Omit name to list teams.",
         args: {
           name: tool.schema.string().optional().describe("Team name to join. Omit to list joinable teams."),
           create: tool.schema.boolean().optional().describe("Create this named team and join as manager. Requires name."),
+          members: tool.schema.array(tool.schema.string()).optional().describe("Connected session names or IDs to add; manager only."),
+          work: tool.schema.string().optional().describe("Task description when creating a team."),
         },
         async execute(args, context) {
           setActiveSession(context.sessionID);
-          return resultText(await runtime.join(args.name, args.create === true));
+          return resultText(await runtime.join(args.name, args.create === true, args.members, args.work));
         },
       }),
 
@@ -633,10 +635,11 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
         args: {
           to: tool.schema.string().describe("Target session name, id, or unique id prefix."),
           message: tool.schema.string().describe("Message text to send."),
+          team: tool.schema.string().optional().describe("Task team; required when multiple teams are shared. Omit for ungrouped contact."),
         },
         async execute(args, context) {
           setActiveSession(context.sessionID);
-          return resultText(await runtime.send(args.to, args.message));
+          return resultText(await runtime.send(args.to, args.message, undefined, undefined, args.team));
         },
       }),
 
@@ -645,6 +648,7 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
         args: {
           to: tool.schema.string().describe("Target session name, id, or unique id prefix."),
           message: tool.schema.string().describe("Question text to send."),
+          team: tool.schema.string().optional().describe("Task team; required when multiple teams are shared."),
           timeout_ms: tool.schema.number().optional().describe("Reply timeout in milliseconds, max 120000."),
         },
         async execute(args, context) {
@@ -652,7 +656,7 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
           const timeoutMs = args.timeout_ms === undefined
             ? undefined
             : validateAskTimeoutMs(args.timeout_ms);
-          return resultText(await runtime.ask(args.to, args.message, undefined, timeoutMs));
+          return resultText(await runtime.ask(args.to, args.message, undefined, timeoutMs, undefined, args.team));
         },
       }),
 
@@ -668,17 +672,24 @@ export const OpenCodeIntercomPlugin: Plugin = async ({ client, directory, server
       }),
 
       intercom_reply: tool({
-        description: "Reply to a pending inbound intercom ask. Use to plus which=oldest/latest when one sender has multiple unresolved asks.",
+        description: "Reply to an inbound ask or ordinary message using askId or contextId. Inherits the original team; team cannot override it.",
         args: {
           message: tool.schema.string().describe("Reply text."),
           to: tool.schema.string().optional().describe("Optional sender name/id; never a message or thread ID."),
           which: tool.schema.enum(["oldest", "latest"]).optional().describe("Select the oldest or latest ask from the chosen sender."),
+          askId: tool.schema.string().optional().describe("Stable pending ask selector from intercom_pending."),
+          contextId: tool.schema.string().optional().describe("Exact inbound context selector, including ordinary messages."),
+          team: tool.schema.string().optional().describe("Must match the original message; omit to inherit."),
         },
         async execute(args, context) {
           setActiveSession(context.sessionID);
-          return resultText(await runtime.reply(args.message, args.to, args.which));
+          return resultText(await runtime.reply(args.message, args.to, args.which, args.askId, args.contextId, args.team));
         },
       }),
+    },
+
+    "experimental.chat.system.transform": async (_input, output) => {
+      output.system.push(TASK_TEAM_GUIDANCE);
     },
 
     event: async ({ event }) => {

@@ -219,15 +219,26 @@ uses `wl-copy`, `xclip`, or `xsel`; macOS uses `pbcopy`, and Windows uses
 ## Tools
 
 - `intercom_whoami`: show this session's intercom ID, name, cwd, and model
-- `intercom_team`: show the current manager and live coworkers owned by that manager
-- `intercom_join`: list, join, or create a named team without tmux (`create: true` joins as manager)
+- `intercom_team({ team? })`: show all named task memberships, inspect one team, or fall back to managed-team discovery
+- `intercom_join({ name?, create?, members?, work? })`: add task-team membership without leaving earlier teams; managers add connected peers in one call
 - `intercom_status`: show connection status and pending message counts
 - `intercom_list`: list local Pi, Codex, Claude, and OpenCode sessions in your scope (protocol v4 is same-scope; cross-scope contact requires an exact full session ID)
 - `intercom_set_summary`: publish a short discoverable status
 - `intercom_send`: send a non-blocking message
 - `intercom_ask`: send a question and wait briefly for the target's reply
 - `intercom_pending`: read queued inbound messages and unresolved asks
-- `intercom_reply`: reply to a pending inbound ask; use `to` plus `which: "oldest" | "latest"` if one sender has multiple unresolved asks
+- `intercom_reply`: reply to an inbound ask or ordinary message via `askId` or `contextId`; inherit the original team. Within one task, `to` plus `which: "oldest" | "latest"` also selects an ask
+
+### Task teams
+
+System guidance asks once for user approval before forming a new task team for named delegated peers. Explicit create/join requests are already approval; approved tasks and inbound team messages do not prompt again. Discover peers, then one call adds everyone:
+
+```typescript
+intercom_join({ name: "launch", create: true, members: ["front", "writer"], work: "Launch page" })
+intercom_send({ to: "front", team: "launch", message: "Implement the header." })
+```
+
+Membership and manager/member roles are additive and per task; earlier teams and registration scopes remain unchanged. Reuse the approved team for the same task and append approved peers as manager. Without a shared team, omit `team` for initial contact, even across unrelated memberships. Multiple shared teams require `team` on sends/asks. Inbound prompts expose exact `contextId` reply hints; replies inherit the source team and cannot override it.
 
 Pending output never exposes protocol message IDs. Keep at most one unresolved `intercom_ask` to the same recipient; the broker rejects a second ask and recommends `intercom_send` for a non-blocking follow-up. Use `intercom_send`—not `intercom_ask`—for assignments and progress/status checkpoints.
 

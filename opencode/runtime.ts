@@ -10,15 +10,14 @@ import { DurableInboundStore, getOpenCodeInboundStatePath, type DurableInboundEn
 import type { Attachment, Message, SessionInfo } from "../types.ts";
 import { formatIntercomTeam, resolveIntercomTeam } from "./team.ts";
 import {
-  createNamedTeam,
-  findNamedTeam,
   formatCreateSuccess,
   formatJoinableNamedTeamList,
   formatNamedJoinSuccess,
   listNamedTeams,
   parseTeamName,
-  rejectManagedJoin,
 } from "./named-teams.ts";
+import { appendNamedTeamMembership, sessionNamedTeams, namedTeamRoster, formatNamedTeamRoster, resolveNamedMessageTeam } from "./named-team-membership.ts";
+import { contextId, askId, replyHint, selectReplyContext } from "./reply-context.ts";
 
 export interface OpenCodeRuntimeIdentity {
   sessionId: string;
@@ -73,6 +72,9 @@ function publicPendingEntry(entry: PendingInboundMessage, selector?: string): Re
       ...(entry.from.parentSessionId ? { parent_session_id: entry.from.parentSessionId } : {}),
       ...(entry.from.generation ? { generation: entry.from.generation } : {}),
     },
+    contextId: contextId(entry),
+    ...(entry.message.expectsReply ? { askId: askId(entry) } : {}),
+    ...(entry.message.content.team ? { team: entry.message.content.team } : {}),
     received_at: entry.receivedAt,
     read: entry.read,
     text: entry.message.content.text,
@@ -94,6 +96,7 @@ export interface ToolResult {
 interface ReplyWaiter {
   from: string;
   replyTo: string;
+  team?: string;
   resolve: (message: Message) => void;
   reject: (error: Error) => void;
   timeout: NodeJS.Timeout;
@@ -241,7 +244,7 @@ export class OpenCodeIntercomRuntime {
       ? options.capturedScopeId
       : intercomScopeIdFromEnv(process.env);
     // Reconnects reuse capturedScopeId even if process.env is mutated later.
-    // An explicit join/create updates capturedScopeId, then rebuilds the client.
+    // Task-team joins update membership only; registration scope stays fixed.
     this.clientFactory = options.clientFactory ?? (() => new IntercomClient({
       env: this.capturedScopeId ? { AGENT_INTERCOM_SCOPE_ID: this.capturedScopeId } : {},
     }));
@@ -417,25 +420,23 @@ export class OpenCodeIntercomRuntime {
     await this.connect();
   }
 
-  async join(name?: string, create = false): Promise<ToolResult> {
-    const blocked = rejectManagedJoin();
-    if (blocked) return textResult(blocked, { ok: false }, true);
+  async join(name?: string, create = false, members?: string[], work?: string): Promise<ToolResult> {
     try {
-      if (create) {
-        if (typeof name !== "string" || !name.trim()) {
-          return textResult("Creating a team requires a name.", { ok: false }, true);
-        }
-        const team = createNamedTeam({ name: parseTeamName(name), managerSessionId: this.identity.sessionId });
-        await this.switchRuntimeScope(team.scopeId, team.managerSessionId);
-        return textResult(formatCreateSuccess({ team: team.name, name: this.identity.name }), { ok: true, team: team.name, role: "manager" });
-      }
       if (!name?.trim()) {
+        if (create || members?.length || work !== undefined) throw new Error("Creating or extending a team requires a name");
         return textResult(formatJoinableNamedTeamList(listNamedTeams()));
       }
-      const team = findNamedTeam(parseTeamName(name));
-      if (!team) return textResult("Could not join that team.", { ok: false }, true);
-      await this.switchRuntimeScope(team.scopeId, team.managerSessionId);
-      return textResult(formatNamedJoinSuccess({ team: team.name, name: this.identity.name }), { ok: true, team: team.name, role: "teammate" });
+      const client = await this.connect();
+      const sessions = await client.listSessions();
+      const memberIds = (members ?? []).map((member) => {
+        const id = resolveSessionTarget(sessions, member);
+        if (!id) throw new Error(`Session "${member}" is not connected`);
+        return id;
+      });
+      const team = await appendNamedTeamMembership({ name: parseTeamName(name), selfId: this.identity.sessionId, members: memberIds, create, work });
+      const roster = namedTeamRoster(team, this.identity.sessionId, sessions);
+      const notice = create ? formatCreateSuccess({ team: team.name, name: this.identity.name }) : formatNamedJoinSuccess({ team: team.name, name: this.identity.name });
+      return textResult(`${notice}\nOther team memberships are unchanged.`, { ok: true, team: team.name, role: roster.self.isManager ? "manager" : "member", roster });
     } catch (error) {
       return textResult(error instanceof Error ? error.message : String(error), { ok: false }, true);
     }
@@ -446,7 +447,7 @@ export class OpenCodeIntercomRuntime {
     if (waiter) {
       const senderTarget = from.name || from.id;
       const fromMatches = senderTarget.toLowerCase() === waiter.from.toLowerCase() || from.id === waiter.from;
-      if (fromMatches) {
+      if (fromMatches && message.content.team === waiter.team) {
         void Promise.resolve(this.onInboundActivity?.(from, message)).catch(() => undefined);
         this.replyWaiters.delete(waiter.replyTo);
         clearTimeout(waiter.timeout);
@@ -485,7 +486,7 @@ export class OpenCodeIntercomRuntime {
     this.unresolvedAsks.delete(messageId);
   }
 
-  private waitForReply(from: string, replyTo: string, timeoutMs = getAskTimeoutMs(), signal?: AbortSignal): Promise<Message> {
+  private waitForReply(from: string, replyTo: string, timeoutMs = getAskTimeoutMs(), signal?: AbortSignal, team?: string): Promise<Message> {
     return new Promise((resolve, reject) => {
       if (signal?.aborted) {
         reject(new Error("intercom_ask cancelled"));
@@ -509,7 +510,7 @@ export class OpenCodeIntercomRuntime {
         reject(new Error(`No reply from "${from}" within ${Math.round(timeoutMs / 1000)} seconds`));
       }, timeoutMs);
       signal?.addEventListener("abort", onAbort, { once: true });
-      this.replyWaiters.set(replyTo, { from, replyTo, resolve, reject, timeout, cleanup });
+      this.replyWaiters.set(replyTo, { from, replyTo, team, resolve, reject, timeout, cleanup });
     });
   }
 
@@ -528,9 +529,16 @@ export class OpenCodeIntercomRuntime {
     );
   }
 
-  async team(): Promise<ToolResult> {
+  async team(name?: string): Promise<ToolResult> {
     const client = await this.connect();
     const sessions = await client.listSessions();
+    const mine = sessionNamedTeams(this.identity.sessionId);
+    const selected = name ? mine.filter((entry) => entry.name === name) : mine;
+    if (name && !selected.length) return textResult(`You do not belong to team "${name}"`, { ok: false }, true);
+    if (selected.length) {
+      const teams = selected.map((entry) => namedTeamRoster(entry, this.identity.sessionId, sessions));
+      return textResult(teams.map(formatNamedTeamRoster).join("\n\n"), { teams });
+    }
     const team = await resolveIntercomTeam({ selfId: client.sessionId ?? this.identity.sessionId, sessions });
     return textResult(formatIntercomTeam(team), team as unknown as Record<string, unknown>);
   }
@@ -606,10 +614,14 @@ export class OpenCodeIntercomRuntime {
     return textResult("Summary updated.", { ok: true, summary });
   }
 
-  async send(to: string, message: string, attachments?: Attachment[], replyTo?: string): Promise<ToolResult> {
+  async send(to: string, message: string, attachments?: Attachment[], replyTo?: string, requestedTeam?: string): Promise<ToolResult> {
     const client = await this.connect();
     const sendTo = await this.resolveTarget(to);
-    const result = await client.send(sendTo, { text: message, attachments, replyTo });
+    const source = replyTo ? this.unread.find((entry) => entry.message.id === replyTo && entry.from.id === sendTo) : undefined;
+    if (replyTo && !source) throw new Error("Unknown inbound reply context");
+    if (source && requestedTeam !== undefined && requestedTeam !== source.message.content.team) throw new Error("Reply team must match the original message");
+    const team = source ? source.message.content.team : resolveNamedMessageTeam(this.identity.sessionId, sendTo, requestedTeam);
+    const result = await client.send(sendTo, { text: message, attachments, replyTo: source?.message.expectsReply ? replyTo : undefined, team });
     if (!result.delivered) {
       return textResult(`Message to "${to}" was not delivered: ${result.reason ?? "Session may not exist or has disconnected."}`, { ok: false, accepted: result.accepted, delivered: false, message_id: result.id, delivery_id: result.deliveryId, code: result.code, reason: result.reason }, true);
     }
@@ -617,11 +629,12 @@ export class OpenCodeIntercomRuntime {
     return textResult(`Message sent to ${to}.`, { ok: true, accepted: result.accepted, delivered: true, message_id: result.id, delivery_id: result.deliveryId, to });
   }
 
-  async ask(to: string, message: string, attachments?: Attachment[], timeoutMs = getAskTimeoutMs(), signal?: AbortSignal): Promise<ToolResult> {
+  async ask(to: string, message: string, attachments?: Attachment[], timeoutMs = getAskTimeoutMs(), signal?: AbortSignal, requestedTeam?: string): Promise<ToolResult> {
     const client = await this.connect();
     const sendTo = await this.resolveTarget(to);
+    const team = resolveNamedMessageTeam(this.identity.sessionId, sendTo, requestedTeam);
     const questionId = randomUUID();
-    const replyPromise = this.waitForReply(sendTo, questionId, timeoutMs, signal);
+    const replyPromise = this.waitForReply(sendTo, questionId, timeoutMs, signal, team);
     void replyPromise.catch(() => undefined);
     try {
       const result = await client.send(sendTo, {
@@ -629,6 +642,7 @@ export class OpenCodeIntercomRuntime {
         text: message,
         attachments,
         expectsReply: true,
+        team,
       });
       if (!result.delivered) {
         this.replyWaiters.get(questionId)?.reject(new Error(result.reason ?? "Session may not exist or has disconnected."));
@@ -653,12 +667,12 @@ export class OpenCodeIntercomRuntime {
     const pendingAsks = Array.from(this.unresolvedAsks.values()).sort((a, b) => a.receivedAt - b.receivedAt);
     const lines = [
       unreadMessages.length
-        ? unreadMessages.map((entry) => `- ${formatSessionDisplay(entry.from)}: ${entry.message.content.text}${formatAttachments(entry.message.content.attachments)}`).join("\n")
+        ? unreadMessages.map((entry) => `- ${formatSessionDisplay(entry.from)}${replyHint(entry)}: ${entry.message.content.text}${formatAttachments(entry.message.content.attachments)}`).join("\n")
         : "No unread messages.",
       pendingAsks.length
         ? `\nPending asks:\n${pendingAsks.map((entry) => {
           const selector = pendingSelector(pendingAsks, entry);
-          return `- ${formatSessionDisplay(entry.from)}${selector ? ` [${selector}]` : ""}: ${entry.message.content.text}`;
+          return `- ${formatSessionDisplay(entry.from)}${replyHint(entry)}${selector ? ` [${selector}]` : ""}: ${entry.message.content.text}`;
         }).join("\n")}`
         : "",
     ].filter(Boolean);
@@ -668,10 +682,10 @@ export class OpenCodeIntercomRuntime {
     });
   }
 
-  async reply(message: string, to?: string, which?: ReplyWhich): Promise<ToolResult> {
+  async reply(message: string, to?: string, which?: ReplyWhich, askId?: string, contextId?: string, team?: string): Promise<ToolResult> {
     let target: PendingInboundMessage;
     try {
-      target = selectPendingAsk(Array.from(this.unresolvedAsks.values()), to, which);
+      target = selectReplyContext(this.unread, Array.from(this.unresolvedAsks.values()), { to, which, askId, contextId, team });
     } catch (error) {
       return textResult(error instanceof Error ? error.message : String(error), { ok: false }, true);
     }

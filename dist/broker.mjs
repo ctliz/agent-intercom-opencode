@@ -1242,6 +1242,7 @@ function isMessage(value) {
   if (typeof content.text !== "string" || Buffer.byteLength(content.text, "utf-8") > MAX_MESSAGE_TEXT_BYTES) {
     return false;
   }
+  if (content.team !== void 0 && (typeof content.team !== "string" || !/^[A-Za-z][A-Za-z0-9_-]{0,31}$/.test(content.team))) return false;
   return content.attachments === void 0 || Array.isArray(content.attachments) && content.attachments.length <= MAX_ATTACHMENTS && content.attachments.every(isAttachment);
 }
 function isSessionId(value) {

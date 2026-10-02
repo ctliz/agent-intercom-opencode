@@ -99,6 +99,17 @@ test("plugin syncs native title from initial SDK session and preserves name on r
     // Wait for eager startup connection and initial session resolution
     await new Promise((resolve) => setTimeout(resolve, 30));
 
+    const system = { system: [] as string[] };
+    await plugin["experimental.chat.system.transform"]?.({ model: {} as any }, system);
+    assert.match(system.system.join("\n"), /ask once/);
+    assert.match(system.system.join("\n"), /Wait for approval/);
+    assert.match(system.system.join("\n"), /Membership is additive/);
+    const properties = (name: string) => (plugin.tool![name]!.args as any);
+    assert.ok(properties("intercom_join").members);
+    assert.ok(properties("intercom_join").work);
+    for (const name of ["intercom_team", "intercom_send", "intercom_ask", "intercom_reply"]) assert.ok(properties(name).team);
+    assert.ok(properties("intercom_reply").askId);
+    assert.ok(properties("intercom_reply").contextId);
     assert.equal(runtime.getIdentity().name, "Feature: Add Dark Mode");
     assert.equal(runtime.getIdentity().sessionId, "stable-opencode-id");
     assert.deepEqual(firstClient.presences, [{ name: "Feature: Add Dark Mode" }]);

@@ -47,6 +47,7 @@ export interface Message {
   expectsReply?: boolean;
   content: {
     text: string;
+    team?: string;
     attachments?: Attachment[];
   };
 }
